@@ -16,7 +16,6 @@ body {
     height: 100vh;
 }
 
-/* Chat Container */
 .chat-wrapper {
     width: 95%;
     max-width: 800px;
@@ -29,7 +28,6 @@ body {
     overflow: hidden;
 }
 
-/* Header */
 .chat-header {
     padding: 20px;
     background: linear-gradient(135deg, #0077ff, #00c6ff);
@@ -38,7 +36,6 @@ body {
     font-weight: 600;
 }
 
-/* Messages */
 .chat-messages {
     flex: 1;
     padding: 20px;
@@ -74,7 +71,6 @@ body {
     opacity: 0.7;
 }
 
-/* Input Area */
 .chat-input {
     display: flex;
     padding: 15px;
@@ -106,7 +102,6 @@ body {
     background: #005fd1;
 }
 
-/* Scrollbar */
 .chat-messages::-webkit-scrollbar {
     width: 6px;
 }
@@ -151,7 +146,7 @@ Tell me your schedule like:
 </div>
 
 <script>
-const API_URL = "https://frost-ai-eehc.onrender.com/parse"; // 🔴 Backend URL
+const API_URL = "https://frost-ai-eehc.onrender.com/parse";
 
 const chatMessages = document.getElementById("chatMessages");
 const userInput = document.getElementById("userInput");
@@ -178,6 +173,20 @@ function removeTyping() {
     if (typing) typing.remove();
 }
 
+function formatResponse(data) {
+    return `
+Active Window: ${data.active_window?.start || "N/A"} → ${data.active_window?.end || "N/A"}
+
+Reminder: ${data.hydration_timer?.enabled ? "ON" : "OFF"}
+Interval: ${data.hydration_timer?.interval_minutes || "N/A"} mins
+Start: ${data.hydration_timer?.start_time || "N/A"}
+End: ${data.hydration_timer?.end_time || "N/A"}
+
+Do Not Disturb: ${data.do_not_disturb?.length ? "Yes" : "No"}
+Exclusions: ${data.exclusions?.length ? data.exclusions.join(", ") : "None"}
+    `.trim();
+}
+
 async function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
@@ -196,23 +205,20 @@ async function sendMessage() {
             body: JSON.stringify({ text })
         });
 
+        const data = await response.json();
+
         removeTyping();
 
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        if (data.error) {
+            addMessage("❌ " + data.error, "bot");
+            return;
+        }
 
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = "hydration_schedule.json";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-
-        addMessage("Configured !", "bot");
+        addMessage(formatResponse(data), "bot");
 
     } catch (error) {
         removeTyping();
-        addMessage("❌ Error connecting to server.", "bot");
+        addMessage("❌ Server error. Make sure backend is running.", "bot");
     }
 }
 
@@ -225,4 +231,3 @@ userInput.addEventListener("keypress", function(e) {
 
 </body>
 </html>
-
