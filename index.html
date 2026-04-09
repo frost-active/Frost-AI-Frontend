@@ -3,95 +3,189 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Hydration Scheduler</title>
+<title>Hydration Assistant</title>
 
 <style>
 body {
     margin: 0;
     font-family: "Segoe UI", sans-serif;
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-    color: white;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
 }
 
-.container {
-    background: rgba(255, 255, 255, 0.08);
-    padding: 30px;
-    border-radius: 20px;
-    width: 420px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+/* Chat Container */
+.chat-wrapper {
+    width: 95%;
+    max-width: 800px;
+    height: 90vh;
+    background: #ffffff;
+    border-radius: 18px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
 }
 
-h1 {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-textarea {
-    width: 100%;
-    height: 120px;
-    border-radius: 10px;
-    border: none;
-    padding: 12px;
-    resize: none;
-    font-size: 14px;
-    outline: none;
-}
-
-button {
-    width: 100%;
-    margin-top: 15px;
-    padding: 12px;
-    border: none;
-    border-radius: 10px;
-    background: #00c6ff;
-    background: linear-gradient(to right, #0072ff, #00c6ff);
+/* Header */
+.chat-header {
+    padding: 20px;
+    background: linear-gradient(135deg, #0077ff, #00c6ff);
     color: white;
-    font-size: 16px;
-    cursor: pointer;
+    font-size: 20px;
+    font-weight: 600;
 }
 
-button:hover {
-    opacity: 0.9;
+/* Messages */
+.chat-messages {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+    background: #f7f9fc;
 }
 
-.status {
-    margin-top: 15px;
-    text-align: center;
+.message {
+    max-width: 75%;
+    margin-bottom: 15px;
+    padding: 14px 18px;
+    border-radius: 16px;
+    animation: fadeIn 0.3s ease-in-out;
+    white-space: pre-wrap;
     font-size: 14px;
+}
+
+.user {
+    background: #0077ff;
+    color: white;
+    margin-left: auto;
+    border-bottom-right-radius: 4px;
+}
+
+.bot {
+    background: #e9eef5;
+    color: #333;
+    border-bottom-left-radius: 4px;
+}
+
+.typing {
+    font-style: italic;
+    opacity: 0.7;
+}
+
+/* Input Area */
+.chat-input {
+    display: flex;
+    padding: 15px;
+    border-top: 1px solid #ddd;
+    background: white;
+}
+
+.chat-input input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    font-size: 14px;
+}
+
+.chat-input button {
+    margin-left: 10px;
+    padding: 12px 20px;
+    background: #0077ff;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.chat-input button:hover {
+    background: #005fd1;
+}
+
+/* Scrollbar */
+.chat-messages::-webkit-scrollbar {
+    width: 6px;
+}
+.chat-messages::-webkit-scrollbar-thumb {
+    background: #bbb;
+    border-radius: 4px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 </style>
 </head>
 
 <body>
 
-<div class="container">
-    <h1>💧 Hydration Scheduler</h1>
+<div class="chat-wrapper">
+    <div class="chat-header">
+        💧 Hydration Scheduler Assistant
+    </div>
 
-    <textarea id="inputText" placeholder="e.g. Remind me every 30 minutes from 9 AM to 6 PM, except during lunch 1–2 PM"></textarea>
+    <div class="chat-messages" id="chatMessages">
+        <div class="message bot">
+Hi 👋 I'm your Hydration Assistant.
 
-    <button onclick="sendRequest()">Generate Schedule</button>
+Tell me your schedule like:
 
-    <div class="status" id="status"></div>
+"I work from 9am to 5pm, lunch 12:30 to 1:30, remind me every 40 minutes"
+        </div>
+    </div>
+
+    <div class="chat-input">
+        <input 
+            type="text" 
+            id="userInput" 
+            placeholder="Type your schedule..." 
+            autocomplete="off"
+        />
+        <button onclick="sendMessage()">Send</button>
+    </div>
 </div>
 
 <script>
-const API_URL = "https://frost-ai-eehc.onrender.com/parse";
+const API_URL = "https://frost-ai-eehc.onrender.com/parse"; // 🔴 Backend URL
 
-async function sendRequest() {
-    const text = document.getElementById("inputText").value;
-    const status = document.getElementById("status");
+const chatMessages = document.getElementById("chatMessages");
+const userInput = document.getElementById("userInput");
 
-    if (!text.trim()) {
-        status.innerText = "⚠️ Please enter some text";
-        return;
-    }
+function addMessage(content, className) {
+    const msg = document.createElement("div");
+    msg.className = "message " + className;
+    msg.textContent = content;
+    chatMessages.appendChild(msg);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
 
-    status.innerText = "⏳ Processing...";
+function addTyping() {
+    const typing = document.createElement("div");
+    typing.className = "message bot typing";
+    typing.id = "typing";
+    typing.textContent = "Typing...";
+    chatMessages.appendChild(typing);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+function removeTyping() {
+    const typing = document.getElementById("typing");
+    if (typing) typing.remove();
+}
+
+async function sendMessage() {
+    const text = userInput.value.trim();
+    if (!text) return;
+
+    addMessage(text, "user");
+    userInput.value = "";
+
+    addTyping();
 
     try {
         const response = await fetch(API_URL, {
@@ -102,16 +196,11 @@ async function sendRequest() {
             body: JSON.stringify({ text })
         });
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || "Something went wrong");
-        }
+        removeTyping();
 
-        // Get blob (file download)
         const blob = await response.blob();
-
-        // Create download link
         const url = window.URL.createObjectURL(blob);
+
         const a = document.createElement("a");
         a.href = url;
         a.download = "hydration_schedule.json";
@@ -119,13 +208,21 @@ async function sendRequest() {
         a.click();
         a.remove();
 
-        status.innerText = "✅ Downloaded successfully!";
+        addMessage("Configured !", "bot");
 
     } catch (error) {
-        status.innerText = "❌ " + error.message;
+        removeTyping();
+        addMessage("❌ Error connecting to server.", "bot");
     }
 }
+
+userInput.addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        sendMessage();
+    }
+});
 </script>
 
 </body>
 </html>
+
