@@ -19,14 +19,32 @@ body {
 /* Chat Container */
 .chat-wrapper {
     width: 95%;
-    max-width: 800px;
+    max-width: 1000px;
     height: 90vh;
     background: #ffffff;
     border-radius: 18px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
     display: flex;
-    flex-direction: column;
     overflow: hidden;
+}
+
+/* LEFT SIDE */
+.chat-container {
+    width: 60%;
+    display: flex;
+    flex-direction: column;
+}
+
+/* RIGHT SIDE LOG PANEL */
+.log-panel {
+    width: 40%;
+    background: #111;
+    color: #0f0;
+    font-family: monospace;
+    font-size: 12px;
+    padding: 15px;
+    overflow-y: auto;
+    border-left: 1px solid #333;
 }
 
 /* Header */
@@ -99,25 +117,6 @@ body {
     color: white;
     cursor: pointer;
     font-weight: 600;
-    transition: 0.2s;
-}
-
-.chat-input button:hover {
-    background: #005fd1;
-}
-
-/* Scrollbar */
-.chat-messages::-webkit-scrollbar {
-    width: 6px;
-}
-.chat-messages::-webkit-scrollbar-thumb {
-    background: #bbb;
-    border-radius: 4px;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 </style>
 </head>
@@ -125,33 +124,42 @@ body {
 <body>
 
 <div class="chat-wrapper">
-    <div class="chat-header">
-        💧 Hydration Scheduler Assistant
-    </div>
 
-    <div class="chat-messages" id="chatMessages">
-        <div class="message bot">
+    <div class="chat-container">
+
+        <div class="chat-header">
+            💧 Hydration Scheduler Assistant
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="message bot">
 Hi 👋 I'm your Hydration Assistant.
 
 Tell me your schedule like:
 
 "I work from 9am to 5pm, lunch 12:30 to 1:30, remind me every 40 minutes"
+            </div>
         </div>
+
+        <div class="chat-input">
+            <input 
+                type="text" 
+                id="userInput" 
+                placeholder="Type your schedule..." 
+                autocomplete="off"
+            />
+            <button onclick="sendMessage()">Send</button>
+        </div>
+
     </div>
 
-    <div class="chat-input">
-        <input 
-            type="text" 
-            id="userInput" 
-            placeholder="Type your schedule..." 
-            autocomplete="off"
-        />
-        <button onclick="sendMessage()">Send</button>
-    </div>
+    <!-- LOG PANEL -->
+    <div class="log-panel" id="logPanel"></div>
+
 </div>
 
 <script>
-const API_URL = "https://frost-ai-eehc.onrender.com/parse"; // 🔴 Backend URL
+const API_URL = "https://frost-ai-eehc.onrender.com/parse";
 
 const chatMessages = document.getElementById("chatMessages");
 const userInput = document.getElementById("userInput");
@@ -170,12 +178,35 @@ function addTyping() {
     typing.id = "typing";
     typing.textContent = "Typing...";
     chatMessages.appendChild(typing);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function removeTyping() {
     const typing = document.getElementById("typing");
     if (typing) typing.remove();
+}
+
+/* ✅ Animated Logs */
+function renderLogs(logs) {
+    const panel = document.getElementById("logPanel");
+    panel.innerHTML = "";
+
+    let index = 0;
+
+    function addNextLog() {
+        if (index >= logs.length) return;
+
+        const line = document.createElement("div");
+        line.textContent = logs[index];
+        panel.appendChild(line);
+
+        panel.scrollTop = panel.scrollHeight;
+
+        index++;
+
+        setTimeout(addNextLog, 400);
+    }
+
+    addNextLog();
 }
 
 async function sendMessage() {
@@ -198,7 +229,22 @@ async function sendMessage() {
 
         removeTyping();
 
-        const blob = await response.blob();
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error || "Server error");
+        }
+
+        const result = await response.json();
+
+        // ✅ Show logs (animated)
+        renderLogs(result.logs);
+
+        // ✅ Simple confirmation message
+        addMessage("Configured !", "bot");
+
+        // ✅ Download JSON
+        const jsonText = JSON.stringify(result.data, null, 2);
+        const blob = new Blob([jsonText], { type: "application/json" });
         const url = window.URL.createObjectURL(blob);
 
         const a = document.createElement("a");
@@ -208,11 +254,9 @@ async function sendMessage() {
         a.click();
         a.remove();
 
-        addMessage("Configured !", "bot");
-
     } catch (error) {
         removeTyping();
-        addMessage("❌ Error connecting to server.", "bot");
+        addMessage("❌ " + error.message, "bot");
     }
 }
 
@@ -225,4 +269,3 @@ userInput.addEventListener("keypress", function(e) {
 
 </body>
 </html>
-
