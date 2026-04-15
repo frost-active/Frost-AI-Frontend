@@ -16,7 +16,6 @@ body {
     height: 100vh;
 }
 
-/* Chat Container */
 .chat-wrapper {
     width: 95%;
     max-width: 1000px;
@@ -28,14 +27,12 @@ body {
     overflow: hidden;
 }
 
-/* LEFT SIDE */
 .chat-container {
     width: 60%;
     display: flex;
     flex-direction: column;
 }
 
-/* RIGHT SIDE LOG PANEL */
 .log-panel {
     width: 40%;
     background: #111;
@@ -47,7 +44,6 @@ body {
     border-left: 1px solid #333;
 }
 
-/* Header */
 .chat-header {
     padding: 20px;
     background: linear-gradient(135deg, #0077ff, #00c6ff);
@@ -56,7 +52,6 @@ body {
     font-weight: 600;
 }
 
-/* Messages */
 .chat-messages {
     flex: 1;
     padding: 20px;
@@ -92,7 +87,6 @@ body {
     opacity: 0.7;
 }
 
-/* Input Area */
 .chat-input {
     display: flex;
     padding: 15px;
@@ -153,7 +147,6 @@ Tell me your schedule like:
 
     </div>
 
-    <!-- LOG PANEL -->
     <div class="log-panel" id="logPanel"></div>
 
 </div>
@@ -185,7 +178,6 @@ function removeTyping() {
     if (typing) typing.remove();
 }
 
-/* ✅ Animated Logs */
 function renderLogs(logs) {
     const panel = document.getElementById("logPanel");
     panel.innerHTML = "";
@@ -202,11 +194,44 @@ function renderLogs(logs) {
         panel.scrollTop = panel.scrollHeight;
 
         index++;
-
         setTimeout(addNextLog, 400);
     }
 
     addNextLog();
+}
+
+function formatConfig(data) {
+    const hydration = data.hydration;
+    const dnd = data.dnd;
+
+    const start = `${hydration.start_hour.toString().padStart(2, '0')}:${hydration.start_min.toString().padStart(2, '0')}`;
+    const end = `${hydration.end_hour.toString().padStart(2, '0')}:${hydration.end_min.toString().padStart(2, '0')}`;
+
+    const interval = hydration.interval_ms / 60000;
+
+    let dndText = "None";
+    if (dnd.enabled) {
+        dndText = `${dnd.sh.toString().padStart(2, '0')}:${dnd.sm.toString().padStart(2, '0')} - ${dnd.eh.toString().padStart(2, '0')}:${dnd.em.toString().padStart(2, '0')}`;
+    }
+
+    let exclusions = "None";
+    if (hydration.abs.enabled && hydration.abs.times.length > 0) {
+        exclusions = hydration.abs.times
+            .map(t => `${t.h.toString().padStart(2, '0')}:${t.m.toString().padStart(2, '0')}`)
+            .join(", ");
+    }
+
+    return `
+Configuration Summary:
+
+Start Time: ${start}
+End Time: ${end}
+Interval: ${interval} minutes
+Do Not Disturb: ${dndText}
+Exclusions: ${exclusions}
+
+If you'd like to change anything, just tell me what to update 👍
+`;
 }
 
 async function sendMessage() {
@@ -236,13 +261,11 @@ async function sendMessage() {
 
         const result = await response.json();
 
-        // ✅ Show logs (animated)
         renderLogs(result.logs);
 
-        // ✅ Simple confirmation message
-        addMessage("Configured !", "bot");
+        const summary = formatConfig(result.data);
+        addMessage(summary, "bot");
 
-        // ✅ Download JSON
         const jsonText = JSON.stringify(result.data, null, 2);
         const blob = new Blob([jsonText], { type: "application/json" });
         const url = window.URL.createObjectURL(blob);
