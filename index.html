@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Hydration Assistant</title>
+<title>Smart Scheduler Assistant</title>
 
 <style>
 body {
@@ -18,7 +18,7 @@ body {
 
 .chat-wrapper {
     width: 95%;
-    max-width: 1000px;
+    max-width: 1100px;
     height: 90vh;
     background: #ffffff;
     border-radius: 18px;
@@ -28,20 +28,26 @@ body {
 }
 
 .chat-container {
-    width: 60%;
+    width: 65%;
     display: flex;
     flex-direction: column;
 }
 
 .log-panel {
-    width: 40%;
-    background: #111;
-    color: #0f0;
+    width: 35%;
+    background: #1a1a1a;
+    color: #9f9;
     font-family: monospace;
-    font-size: 12px;
+    font-size: 11px;
     padding: 15px;
     overflow-y: auto;
     border-left: 1px solid #333;
+}
+
+.log-title {
+    font-weight: bold;
+    margin-bottom: 10px;
+    color: #ccc;
 }
 
 .chat-header {
@@ -60,11 +66,10 @@ body {
 }
 
 .message {
-    max-width: 75%;
+    max-width: 80%;
     margin-bottom: 15px;
     padding: 14px 18px;
     border-radius: 16px;
-    animation: fadeIn 0.3s ease-in-out;
     white-space: pre-wrap;
     font-size: 14px;
 }
@@ -73,13 +78,11 @@ body {
     background: #0077ff;
     color: white;
     margin-left: auto;
-    border-bottom-right-radius: 4px;
 }
 
 .bot {
     background: #e9eef5;
     color: #333;
-    border-bottom-left-radius: 4px;
 }
 
 .typing {
@@ -87,11 +90,30 @@ body {
     opacity: 0.7;
 }
 
+.section {
+    margin-bottom: 12px;
+}
+
+.section-title {
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.schedule-box {
+    margin-top: 8px;
+    padding: 10px;
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    max-height: 250px;
+    overflow-y: auto;
+    font-size: 13px;
+}
+
 .chat-input {
     display: flex;
     padding: 15px;
     border-top: 1px solid #ddd;
-    background: white;
 }
 
 .chat-input input {
@@ -99,7 +121,6 @@ body {
     padding: 12px;
     border-radius: 8px;
     border: 1px solid #ccc;
-    font-size: 14px;
 }
 
 .chat-input button {
@@ -110,7 +131,6 @@ body {
     border-radius: 8px;
     color: white;
     cursor: pointer;
-    font-weight: 600;
 }
 </style>
 </head>
@@ -122,32 +142,30 @@ body {
     <div class="chat-container">
 
         <div class="chat-header">
-            💧 Hydration Scheduler Assistant
+            🧠 Smart Scheduler Assistant
         </div>
 
         <div class="chat-messages" id="chatMessages">
             <div class="message bot">
-Hi 👋 I'm your Hydration Assistant.
+Hi 👋
 
 Tell me your schedule like:
 
-"I work from 9am to 5pm, lunch 12:30 to 1:30, remind me every 40 minutes"
+"I work 9 to 5, drink water every 30 min, eye breaks every 20 min"
             </div>
         </div>
 
         <div class="chat-input">
-            <input 
-                type="text" 
-                id="userInput" 
-                placeholder="Type your schedule..." 
-                autocomplete="off"
-            />
+            <input id="userInput" placeholder="Type your schedule..." />
             <button onclick="sendMessage()">Send</button>
         </div>
 
     </div>
 
-    <div class="log-panel" id="logPanel"></div>
+    <div class="log-panel">
+        <div class="log-title">System Logs</div>
+        <div id="logPanel"></div>
+    </div>
 
 </div>
 
@@ -157,19 +175,24 @@ const API_URL = "https://frost-ai-eehc.onrender.com/parse";
 const chatMessages = document.getElementById("chatMessages");
 const userInput = document.getElementById("userInput");
 
+// Add message
 function addMessage(content, className) {
     const msg = document.createElement("div");
     msg.className = "message " + className;
-    msg.textContent = content;
+
+    // safer but still supports formatted HTML
+    msg.innerHTML = content;
+
     chatMessages.appendChild(msg);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+// Typing indicator
 function addTyping() {
     const typing = document.createElement("div");
     typing.className = "message bot typing";
     typing.id = "typing";
-    typing.textContent = "Typing...";
+    typing.textContent = "Thinking...";
     chatMessages.appendChild(typing);
 }
 
@@ -178,62 +201,92 @@ function removeTyping() {
     if (typing) typing.remove();
 }
 
+// Logs
 function renderLogs(logs) {
     const panel = document.getElementById("logPanel");
-    panel.innerHTML = "";
+    panel.innerHTML = ""; // clear previous logs
 
-    let index = 0;
+    if (!Array.isArray(logs)) return;
 
-    function addNextLog() {
-        if (index >= logs.length) return;
-
-        const line = document.createElement("div");
-        line.textContent = logs[index];
-        panel.appendChild(line);
-
-        panel.scrollTop = panel.scrollHeight;
-
-        index++;
-        setTimeout(addNextLog, 400);
-    }
-
-    addNextLog();
+    logs.forEach(line => {
+        const div = document.createElement("div");
+        div.textContent = line;
+        panel.appendChild(div);
+    });
 }
 
+// Helpers
+function msToMinutes(ms) {
+    return Math.round(ms / 60000);
+}
+
+function msToSeconds(ms) {
+    return Math.round(ms / 1000);
+}
+
+// Format output
 function formatConfig(data) {
-    const hydration = data.hydration;
-    const dnd = data.dnd;
+    const h = data.hydration || {};
+    const eye = data.eye || {};
+    const stretch = data.stretch || {};
+    const walk = data.walk || {};
+    const dnd = data.dnd || {};
+    const schedule = data.schedule || [];
 
-    const start = `${hydration.start_hour.toString().padStart(2, '0')}:${hydration.start_min.toString().padStart(2, '0')}`;
-    const end = `${hydration.end_hour.toString().padStart(2, '0')}:${hydration.end_min.toString().padStart(2, '0')}`;
+    const start = `${String(h.start_hour || 0).padStart(2,'0')}:${String(h.start_min || 0).padStart(2,'0')}`;
+    const end = `${String(h.end_hour || 0).padStart(2,'0')}:${String(h.end_min || 0).padStart(2,'0')}`;
 
-    const interval = hydration.interval_ms / 60000;
+    let html = "";
 
-    let dndText = "None";
+    html += `<div class="section"><div class="section-title">🕒 Active Hours</div>${start} - ${end}</div>`;
+
+    html += `<div class="section"><div class="section-title">💧 Hydration</div>Every ${msToMinutes(h.interval_ms || 1800000)} minutes</div>`;
+
+    if (eye.enabled) {
+        html += `<div class="section"><div class="section-title">👁 Eye Care</div>
+        Every ${msToMinutes(eye.interval_ms)} minutes, take a ${msToSeconds(eye.duration_ms)} second break</div>`;
+    }
+
+    if (stretch.enabled) {
+        html += `<div class="section"><div class="section-title">🏃 Stretch</div>
+        Every ${msToMinutes(stretch.interval_ms)} minutes</div>`;
+    }
+
+    if (walk.enabled) {
+        html += `<div class="section"><div class="section-title">🚶 Walk</div>
+        Every ${msToMinutes(walk.interval_ms)} minutes</div>`;
+    }
+
     if (dnd.enabled) {
-        dndText = `${dnd.sh.toString().padStart(2, '0')}:${dnd.sm.toString().padStart(2, '0')} - ${dnd.eh.toString().padStart(2, '0')}:${dnd.em.toString().padStart(2, '0')}`;
+        html += `<div class="section"><div class="section-title">🔕 Do Not Disturb</div>
+        ${String(dnd.sh).padStart(2,'0')}:${String(dnd.sm).padStart(2,'0')} - ${String(dnd.eh).padStart(2,'0')}:${String(dnd.em).padStart(2,'0')}</div>`;
     }
 
-    let exclusions = "None";
-    if (hydration.abs.enabled && hydration.abs.times.length > 0) {
-        exclusions = hydration.abs.times
-            .map(t => `${t.h.toString().padStart(2, '0')}:${t.m.toString().padStart(2, '0')}`)
-            .join(", ");
+    if (schedule.length > 0) {
+        html += `<div class="section"><div class="section-title">📅 Schedule</div>`;
+        html += `<div class="schedule-box">`;
+
+        const labelMap = {
+            hydration: " Hydration",
+            eye: " Eye",
+            stretch: " Stretch",
+            walk: " Walk"
+        };
+
+        schedule.forEach(s => {
+            html += `<div>${s.time} → ${labelMap[s.task] || s.task}</div>`;
+        });
+
+        html += `</div></div>`;
+    } else {
+        // FIX: fallback when empty
+        html += `<div class="section">⚠️ No schedule generated</div>`;
     }
 
-    return `
-Configuration Summary:
-
-Start Time: ${start}
-End Time: ${end}
-Interval: ${interval} minutes
-Do Not Disturb: ${dndText}
-Exclusions: ${exclusions}
-
-If you'd like to change anything, just tell me what to update 👍
-`;
+    return html;
 }
 
+// Send message
 async function sendMessage() {
     const text = userInput.value.trim();
     if (!text) return;
@@ -246,47 +299,45 @@ async function sendMessage() {
     try {
         const response = await fetch(API_URL, {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ text })
         });
 
         removeTyping();
 
-        if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error || "Server error");
-        }
-
         const result = await response.json();
 
-        renderLogs(result.logs);
+        if (result.error) {
+            addMessage("❌ " + result.error, "bot");
+            return;
+        }
+
+        renderLogs(result.logs || []);
 
         const summary = formatConfig(result.data);
         addMessage(summary, "bot");
 
+        // JSON download
         const jsonText = JSON.stringify(result.data, null, 2);
         const blob = new Blob([jsonText], { type: "application/json" });
         const url = window.URL.createObjectURL(blob);
 
         const a = document.createElement("a");
         a.href = url;
-        a.download = "hydration_schedule.json";
+        a.download = "scheduler_config.json";
         document.body.appendChild(a);
         a.click();
         a.remove();
 
-    } catch (error) {
+    } catch (err) {
         removeTyping();
-        addMessage("❌ " + error.message, "bot");
+        addMessage("❌ Error: " + err.message, "bot");
     }
 }
 
-userInput.addEventListener("keypress", function(e) {
-    if (e.key === "Enter") {
-        sendMessage();
-    }
+// FIX: keydown instead of keypress
+userInput.addEventListener("keydown", e => {
+    if (e.key === "Enter") sendMessage();
 });
 </script>
 
