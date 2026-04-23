@@ -99,17 +99,6 @@ body {
     margin-bottom: 4px;
 }
 
-.schedule-box {
-    margin-top: 8px;
-    padding: 10px;
-    background: #fff;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    max-height: 250px;
-    overflow-y: auto;
-    font-size: 13px;
-}
-
 .chat-input {
     display: flex;
     padding: 15px;
@@ -179,10 +168,7 @@ const userInput = document.getElementById("userInput");
 function addMessage(content, className) {
     const msg = document.createElement("div");
     msg.className = "message " + className;
-
-    // safer but still supports formatted HTML
     msg.innerHTML = content;
-
     chatMessages.appendChild(msg);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -204,8 +190,7 @@ function removeTyping() {
 // Logs
 function renderLogs(logs) {
     const panel = document.getElementById("logPanel");
-    panel.innerHTML = ""; // clear previous logs
-
+    panel.innerHTML = "";
     if (!Array.isArray(logs)) return;
 
     logs.forEach(line => {
@@ -220,67 +205,72 @@ function msToMinutes(ms) {
     return Math.round(ms / 60000);
 }
 
-function msToSeconds(ms) {
-    return Math.round(ms / 1000);
-}
-
-// Format output
+// Format CONFIG (UPDATED)
 function formatConfig(data) {
     const h = data.hydration || {};
     const eye = data.eye || {};
     const stretch = data.stretch || {};
     const walk = data.walk || {};
-    const dnd = data.dnd || {};
-    const schedule = data.schedule || [];
 
-    const start = `${String(h.start_hour || 0).padStart(2,'0')}:${String(h.start_min || 0).padStart(2,'0')}`;
-    const end = `${String(h.end_hour || 0).padStart(2,'0')}:${String(h.end_min || 0).padStart(2,'0')}`;
+    let html = `<div class="section-title">⚙️ Device Configuration</div>`;
 
-    let html = "";
+    // HYDRATION
+    if (h.enabled) {
+        const start = `${String(h.start_hour).padStart(2,'0')}:${String(h.start_min).padStart(2,'0')}`;
+        const end = `${String(h.end_hour).padStart(2,'0')}:${String(h.end_min).padStart(2,'0')}`;
 
-    html += `<div class="section"><div class="section-title">🕒 Active Hours</div>${start} - ${end}</div>`;
+        html += `<div class="section">
+        <div class="section-title">💧 Hydration</div>
+        Every ${msToMinutes(h.interval_ms)} min<br>
+        ${start} - ${end}
+        </div>`;
+    }
 
-    html += `<div class="section"><div class="section-title">💧 Hydration</div>Every ${msToMinutes(h.interval_ms || 1800000)} minutes</div>`;
-
+    // EYE
     if (eye.enabled) {
-        html += `<div class="section"><div class="section-title">👁 Eye Care</div>
-        Every ${msToMinutes(eye.interval_ms)} minutes, take a ${msToSeconds(eye.duration_ms)} second break</div>`;
+        const start = `${String(eye.start_hour).padStart(2,'0')}:${String(eye.start_min).padStart(2,'0')}`;
+        const end = `${String(eye.end_hour).padStart(2,'0')}:${String(eye.end_min).padStart(2,'0')}`;
+
+        html += `<div class="section">
+        <div class="section-title">👁 Eye Care</div>
+        Every ${msToMinutes(eye.interval_ms)} min<br>
+        ${start} - ${end}
+        </div>`;
     }
 
+    // STRETCH (phases)
     if (stretch.enabled) {
-        html += `<div class="section"><div class="section-title">🏃 Stretch</div>
-        Every ${msToMinutes(stretch.interval_ms)} minutes</div>`;
+        let phaseText = "";
+
+        if (Array.isArray(stretch.phases)) {
+            stretch.phases.forEach(p => {
+                const s = `${String(p.sh).padStart(2,'0')}:${String(p.sm).padStart(2,'0')}`;
+                const e = `${String(p.eh).padStart(2,'0')}:${String(p.em).padStart(2,'0')}`;
+                phaseText += `${s} - ${e}<br>`;
+            });
+        }
+
+        html += `<div class="section">
+        <div class="section-title">🏃 Stretch</div>
+        Every ${msToMinutes(stretch.interval_ms)} min<br>
+        ${phaseText}
+        </div>`;
     }
 
+    // WALK (correct unit)
     if (walk.enabled) {
-        html += `<div class="section"><div class="section-title">🚶 Walk</div>
-        Every ${msToMinutes(walk.interval_ms)} minutes</div>`;
+        const start = `${String(walk.start_hour).padStart(2,'0')}:${String(walk.start_min).padStart(2,'0')}`;
+        const end = `${String(walk.end_hour).padStart(2,'0')}:${String(walk.end_min).padStart(2,'0')}`;
+
+        html += `<div class="section">
+        <div class="section-title">🚶 Walk</div>
+        Every ${walk.interval_min} min<br>
+        ${start} - ${end}
+        </div>`;
     }
 
-    if (dnd.enabled) {
-        html += `<div class="section"><div class="section-title">🔕 Do Not Disturb</div>
-        ${String(dnd.sh).padStart(2,'0')}:${String(dnd.sm).padStart(2,'0')} - ${String(dnd.eh).padStart(2,'0')}:${String(dnd.em).padStart(2,'0')}</div>`;
-    }
-
-    if (schedule.length > 0) {
-        html += `<div class="section"><div class="section-title">📅 Schedule</div>`;
-        html += `<div class="schedule-box">`;
-
-        const labelMap = {
-            hydration: " Hydration",
-            eye: " Eye",
-            stretch: " Stretch",
-            walk: " Walk"
-        };
-
-        schedule.forEach(s => {
-            html += `<div>${s.time} → ${labelMap[s.task] || s.task}</div>`;
-        });
-
-        html += `</div></div>`;
-    } else {
-        // FIX: fallback when empty
-        html += `<div class="section">⚠️ No schedule generated</div>`;
+    if (!h.enabled && !eye.enabled && !stretch.enabled && !walk.enabled) {
+        html += `<div class="section">⚠️ No tasks enabled</div>`;
     }
 
     return html;
@@ -324,7 +314,7 @@ async function sendMessage() {
 
         const a = document.createElement("a");
         a.href = url;
-        a.download = "scheduler_config.json";
+        a.download = "frost_config.json";
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -335,7 +325,7 @@ async function sendMessage() {
     }
 }
 
-// FIX: keydown instead of keypress
+// Enter key
 userInput.addEventListener("keydown", e => {
     if (e.key === "Enter") sendMessage();
 });
