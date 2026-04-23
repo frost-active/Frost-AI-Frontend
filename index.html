@@ -205,14 +205,26 @@ function msToMinutes(ms) {
     return Math.round(ms / 60000);
 }
 
-// Format CONFIG (UPDATED)
+// Format CONFIG (FINAL)
 function formatConfig(data) {
     const h = data.hydration || {};
     const eye = data.eye || {};
     const stretch = data.stretch || {};
     const walk = data.walk || {};
+    const dnd = data.dnd || {};
 
     let html = `<div class="section-title">⚙️ Device Configuration</div>`;
+
+    // DND (NEW)
+    if (dnd.enabled) {
+        const start = `${String(dnd.sh).padStart(2,'0')}:${String(dnd.sm).padStart(2,'0')}`;
+        const end = `${String(dnd.eh).padStart(2,'0')}:${String(dnd.em).padStart(2,'0')}`;
+
+        html += `<div class="section">
+        <div class="section-title">🔕 Do Not Disturb</div>
+        ${start} - ${end}
+        </div>`;
+    }
 
     // HYDRATION
     if (h.enabled) {
@@ -238,7 +250,7 @@ function formatConfig(data) {
         </div>`;
     }
 
-    // STRETCH (phases)
+    // STRETCH
     if (stretch.enabled) {
         let phaseText = "";
 
@@ -257,7 +269,7 @@ function formatConfig(data) {
         </div>`;
     }
 
-    // WALK (correct unit)
+    // WALK
     if (walk.enabled) {
         const start = `${String(walk.start_hour).padStart(2,'0')}:${String(walk.start_min).padStart(2,'0')}`;
         const end = `${String(walk.end_hour).padStart(2,'0')}:${String(walk.end_min).padStart(2,'0')}`;
