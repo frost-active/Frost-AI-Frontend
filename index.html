@@ -140,7 +140,7 @@ Hi 👋
 
 Try something like:
 
-"I work 9 to 5, drink water every 30 min, eye break every 20 min, stretch every 1 hour, walk every 2 hours, take vitamin D at 8am and 8pm"
+"I work 9 to 5, drink water every 30 min, eye break every 20 min, stretch every 1 hour, walk every 2 hours, take vitamin D every Monday and Friday at 8am for 10 days"
             </div>
         </div>
 
@@ -185,7 +185,7 @@ function removeTyping() {
     if (typing) typing.remove();
 }
 
-// 🧠 Improved logs with timestamp
+// Logs with timestamp
 function renderLogs(logs) {
     const panel = document.getElementById("logPanel");
     panel.innerHTML = "";
@@ -240,18 +240,32 @@ function formatConfig(data) {
         Every ${walk.interval_min} min</div>`;
     }
 
-    // 💊 Medication
+    // 💊 Medication (Enhanced)
     if (med.length > 0) {
         let medHtml = "";
+
         med.forEach(m => {
             const times = m.doses.map(d =>
                 `${String(d.h).padStart(2,'0')}:${String(d.m).padStart(2,'0')}`
             ).join(", ");
 
-            medHtml += `<div><b>${m.label}</b><br>${times}</div>`;
+            const days = (m.days || []).join(", ");
+            const dateRange = `${m.start} → ${m.end}`;
+
+            medHtml += `
+            <div>
+                <b>${m.label}</b><br>
+                🕒 ${times}<br>
+                📅 ${dateRange}<br>
+                📆 ${days}
+            </div>`;
         });
 
-        html += `<div class="section"><div class="section-title">💊 Medication</div>${medHtml}</div>`;
+        html += `
+        <div class="section">
+            <div class="section-title">💊 Medication</div>
+            ${medHtml}
+        </div>`;
     }
 
     return html;
@@ -287,7 +301,7 @@ async function sendMessage() {
         const summary = formatConfig(result.data);
         addMessage(summary, "bot");
 
-        // ✅ Download JSON
+        // JSON download
         const jsonText = JSON.stringify(result.data, null, 2);
         const blob = new Blob([jsonText], { type: "application/json" });
         const url = window.URL.createObjectURL(blob);
