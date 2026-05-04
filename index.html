@@ -18,8 +18,8 @@ body {
 
 .chat-wrapper {
     width: 95%;
-    max-width: 1100px;
-    height: 90vh;
+    max-width: 1200px;
+    height: 92vh;
     background: #ffffff;
     border-radius: 18px;
     box-shadow: 0 20px 60px rgba(0,0,0,0.4);
@@ -44,14 +44,8 @@ body {
     border-left: 1px solid #333;
 }
 
-.log-title {
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #ccc;
-}
-
 .chat-header {
-    padding: 20px;
+    padding: 18px;
     background: linear-gradient(135deg, #0077ff, #00c6ff);
     color: white;
     font-size: 20px;
@@ -60,18 +54,18 @@ body {
 
 .chat-messages {
     flex: 1;
-    padding: 20px;
+    padding: 15px;
     overflow-y: auto;
     background: #f7f9fc;
 }
 
 .message {
     max-width: 80%;
-    margin-bottom: 15px;
-    padding: 14px 18px;
-    border-radius: 16px;
-    white-space: pre-wrap;
+    margin-bottom: 12px;
+    padding: 12px 16px;
+    border-radius: 14px;
     font-size: 14px;
+    white-space: pre-wrap;
 }
 
 .user {
@@ -82,44 +76,43 @@ body {
 
 .bot {
     background: #e9eef5;
-    color: #333;
-}
-
-.typing {
-    font-style: italic;
-    opacity: 0.7;
-}
-
-.section {
-    margin-bottom: 12px;
-}
-
-.section-title {
-    font-weight: 600;
-    margin-bottom: 4px;
 }
 
 .chat-input {
-    display: flex;
-    padding: 15px;
+    padding: 12px;
     border-top: 1px solid #ddd;
 }
 
-.chat-input input {
-    flex: 1;
-    padding: 12px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
+.row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
 }
 
-.chat-input button {
-    margin-left: 10px;
-    padding: 12px 20px;
-    background: #0077ff;
+input, select {
+    padding: 8px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    flex: 1;
+}
+
+button {
+    padding: 8px 14px;
+    border-radius: 6px;
     border: none;
-    border-radius: 8px;
+    background: #0077ff;
     color: white;
     cursor: pointer;
+}
+
+.example {
+    display: inline-block;
+    background: #eee;
+    padding: 5px 8px;
+    margin: 3px;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 12px;
 }
 </style>
 </head>
@@ -128,200 +121,190 @@ body {
 
 <div class="chat-wrapper">
 
-    <div class="chat-container">
+<div class="chat-container">
 
-        <div class="chat-header">
-            🧠 Smart Scheduler Assistant
-        </div>
+<div class="chat-header">🧠 Smart Scheduler</div>
 
-        <div class="chat-messages" id="chatMessages">
-            <div class="message bot">
-Hi 👋
+<div class="chat-messages" id="chatMessages"></div>
 
-Try something like:
+<div class="chat-input">
 
-"I work 9 to 5, drink water every 30 min, eye break every 20 min, stretch every 1 hour, walk every 2 hours, take vitamin D every Monday and Friday at 8am for 10 days"
-            </div>
-        </div>
+<div class="row">
+<select id="mode" onchange="toggleMode()">
+<option value="interval">Interval</option>
+<option value="absolute">Absolute</option>
+</select>
 
-        <div class="chat-input">
-            <input id="userInput" placeholder="Type your schedule..." />
-            <button onclick="sendMessage()">Send</button>
-        </div>
+<select id="taskType">
+<option value="hydration">Hydration</option>
+<option value="eye">Eye</option>
+<option value="stretch">Stretch</option>
+<option value="walk">Walk</option>
+</select>
+</div>
 
-    </div>
+<div id="intervalBox" class="row">
+<input id="intervalInput" placeholder="Enter minutes">
+</div>
 
-    <div class="log-panel">
-        <div class="log-title">System Logs</div>
-        <div id="logPanel"></div>
-    </div>
+<div id="absoluteBox" class="row" style="display:none;">
+<input id="timeInput" placeholder="HH:MM">
+<button onclick="addTime()">+</button>
+</div>
+
+<div id="timeList"></div>
+
+<div class="row">
+<button onclick="sendStructured()">Send Structured</button>
+<button onclick="sendText()">Send Text</button>
+</div>
+
+<div class="row">
+<input id="textInput" placeholder="Type natural language...">
+</div>
+
+<div>
+<div class="example" onclick="setExample('drink water every 30 minutes')">Hydration Interval</div>
+<div class="example" onclick="setExample('drink water at 9am, 1pm')">Hydration Absolute</div>
+<div class="example" onclick="setExample('eye break every 20 minutes')">Eye Interval</div>
+<div class="example" onclick="setExample('stretch at 10am, 4pm')">Stretch Absolute</div>
+<div class="example" onclick="setExample('walk every 2 hours')">Walk Interval</div>
+<div class="example" onclick="setExample('take medicine at 8am daily')">Medication</div>
+</div>
+
+</div>
+</div>
+
+<div class="log-panel">
+<div>Logs</div>
+<div id="logPanel"></div>
+</div>
 
 </div>
 
 <script>
+
 const API_URL = "https://frost-ai-eehc.onrender.com/parse";
+let times = [];
+let lastConfig = null; // ✅ added
 
-const chatMessages = document.getElementById("chatMessages");
-const userInput = document.getElementById("userInput");
-
-function addMessage(content, className) {
-    const msg = document.createElement("div");
-    msg.className = "message " + className;
-    msg.innerHTML = content;
-    chatMessages.appendChild(msg);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+function toggleMode() {
+    const mode = document.getElementById("mode").value;
+    document.getElementById("intervalBox").style.display = mode === "interval" ? "flex" : "none";
+    document.getElementById("absoluteBox").style.display = mode === "absolute" ? "flex" : "none";
 }
 
-function addTyping() {
-    const typing = document.createElement("div");
-    typing.className = "message bot typing";
-    typing.id = "typing";
-    typing.textContent = "Thinking...";
-    chatMessages.appendChild(typing);
+function addTime() {
+    const val = document.getElementById("timeInput").value;
+    if (!val) return;
+    times.push(val);
+    document.getElementById("timeInput").value = "";
+    document.getElementById("timeList").innerHTML =
+        times.map(t => `<div>${t}</div>`).join("");
 }
 
-function removeTyping() {
-    const typing = document.getElementById("typing");
-    if (typing) typing.remove();
+function addMessage(content, cls) {
+    const div = document.createElement("div");
+    div.className = "message " + cls;
+    div.innerHTML = content;
+    document.getElementById("chatMessages").appendChild(div);
 }
 
-// Logs with timestamp
 function renderLogs(logs) {
-    const panel = document.getElementById("logPanel");
-    panel.innerHTML = "";
-
-    if (!Array.isArray(logs)) return;
-
-    logs.forEach((line, i) => {
-        const div = document.createElement("div");
-        const time = new Date().toLocaleTimeString();
-        div.textContent = `[${i + 1}] (${time}) ${line}`;
-        panel.appendChild(div);
-    });
-}
-
-function msToMinutes(ms) {
-    return Math.round(ms / 60000);
+    document.getElementById("logPanel").innerHTML =
+        logs.map((l,i)=>`[${i+1}] ${l}`).join("<br>");
 }
 
 function formatConfig(data) {
-    const h = data.hydration || {};
-    const eye = data.eye || {};
-    const stretch = data.stretch || {};
-    const walk = data.walk || {};
-    const dnd = data.dnd || {};
-    const med = data.medication || [];
 
-    let html = `<div class="section-title">⚙️ Device Configuration</div>`;
+    function renderTask(name, obj, key) {
+        if (!obj.enabled) return "";
 
-    if (dnd.enabled) {
-        const start = `${String(dnd.sh).padStart(2,'0')}:${String(dnd.sm).padStart(2,'0')}`;
-        const end = `${String(dnd.eh).padStart(2,'0')}:${String(dnd.em).padStart(2,'0')}`;
-        html += `<div class="section"><div class="section-title">🔕 Do Not Disturb</div>${start} - ${end}</div>`;
-    }
-
-    if (h.enabled) {
-        html += `<div class="section"><div class="section-title">💧 Hydration</div>
-        Every ${msToMinutes(h.interval_ms)} min</div>`;
-    }
-
-    if (eye.enabled) {
-        html += `<div class="section"><div class="section-title">👁 Eye Care</div>
-        Every ${msToMinutes(eye.interval_ms)} min</div>`;
-    }
-
-    if (stretch.enabled) {
-        html += `<div class="section"><div class="section-title">🏃 Stretch</div>
-        Every ${msToMinutes(stretch.interval_ms)} min</div>`;
-    }
-
-    if (walk.enabled) {
-        html += `<div class="section"><div class="section-title">🚶 Walk</div>
-        Every ${walk.interval_min} min</div>`;
-    }
-
-    // 💊 Medication (Enhanced)
-    if (med.length > 0) {
-        let medHtml = "";
-
-        med.forEach(m => {
-            const times = m.doses.map(d =>
-                `${String(d.h).padStart(2,'0')}:${String(d.m).padStart(2,'0')}`
+        if (obj.mode === "absolute" && obj.abs?.times?.length) {
+            const times = obj.abs.times.map(t =>
+                `${String(t.h).padStart(2,'0')}:${String(t.m).padStart(2,'0')}`
             ).join(", ");
-
-            const days = (m.days || []).join(", ");
-            const dateRange = `${m.start} → ${m.end}`;
-
-            medHtml += `
-            <div>
-                <b>${m.label}</b><br>
-                🕒 ${times}<br>
-                📅 ${dateRange}<br>
-                📆 ${days}
-            </div>`;
-        });
-
-        html += `
-        <div class="section">
-            <div class="section-title">💊 Medication</div>
-            ${medHtml}
-        </div>`;
-    }
-
-    return html;
-}
-
-async function sendMessage() {
-    const text = userInput.value.trim();
-    if (!text) return;
-
-    addMessage(text, "user");
-    userInput.value = "";
-
-    addTyping();
-
-    try {
-        const response = await fetch(API_URL, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ text })
-        });
-
-        removeTyping();
-
-        const result = await response.json();
-
-        if (result.error) {
-            addMessage("❌ " + result.error, "bot");
-            return;
+            return `<div><b>${name}</b>: At ${times}</div>`;
         }
 
-        renderLogs(result.logs || []);
+        const val = key === "interval_ms"
+            ? Math.round(obj[key]/60000)
+            : obj[key];
 
-        const summary = formatConfig(result.data);
-        addMessage(summary, "bot");
+        return `<div><b>${name}</b>: Every ${val} min</div>`;
+    }
 
-        // JSON download
-        const jsonText = JSON.stringify(result.data, null, 2);
-        const blob = new Blob([jsonText], { type: "application/json" });
-        const url = window.URL.createObjectURL(blob);
+    return `
+    ${renderTask("💧 Hydration", data.hydration, "interval_ms")}
+    ${renderTask("👁 Eye", data.eye, "interval_ms")}
+    ${renderTask("🏃 Stretch", data.stretch, "interval_ms")}
+    ${renderTask("🚶 Walk", data.walk, "interval_min")}
+    `;
+}
 
+async function sendStructured() {
+    const mode = document.getElementById("mode").value;
+    const type = document.getElementById("taskType").value;
+
+    let text = "";
+
+    if (mode === "interval") {
+        const val = document.getElementById("intervalInput").value;
+        text = `${type} every ${val} minutes`;
+    } else {
+        text = `${type} at ${times.join(", ")}`;
+    }
+
+    send(text);
+}
+
+async function sendText() {
+    const text = document.getElementById("textInput").value;
+    send(text);
+}
+
+// ✅ UPDATED SEND FUNCTION (AUTO DOWNLOAD)
+async function send(text) {
+
+    addMessage(text, "user");
+
+    const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ text })
+    });
+
+    const result = await res.json();
+
+    lastConfig = result.data; // store latest
+
+    addMessage(formatConfig(result.data), "bot");
+    renderLogs(result.logs || []);
+
+    // 🔥 AUTO DOWNLOAD
+    if (lastConfig) {
+        const blob = new Blob(
+            [JSON.stringify(lastConfig, null, 2)],
+            { type: "application/json" }
+        );
+
+        const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
-        a.href = url;
-        a.download = "frost_config.json";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
 
-    } catch (err) {
-        removeTyping();
-        addMessage("❌ Error: " + err.message, "bot");
+        const now = new Date();
+        a.download = `schedule_${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}.json`;
+
+        a.href = url;
+        a.click();
+
+        URL.revokeObjectURL(url);
     }
 }
 
-userInput.addEventListener("keydown", e => {
-    if (e.key === "Enter") sendMessage();
-});
+function setExample(t) {
+    document.getElementById("textInput").value = t;
+}
+
 </script>
 
 </body>
