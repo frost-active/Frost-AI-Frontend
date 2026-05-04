@@ -234,13 +234,43 @@ function formatConfig(data) {
         return `<div><b>${name}</b>: Every ${val} min</div>`;
     }
 
-    return `
-    ${renderTask("💧 Hydration", data.hydration, "interval_ms")}
-    ${renderTask("👁 Eye", data.eye, "interval_ms")}
-    ${renderTask("🏃 Stretch", data.stretch, "interval_ms")}
-    ${renderTask("🚶 Walk", data.walk, "interval_min")}
+    let html = `
+        ${renderTask("💧 Hydration", data.hydration, "interval_ms")}
+        ${renderTask("👁 Eye", data.eye, "interval_ms")}
+        ${renderTask("🏃 Stretch", data.stretch, "interval_ms")}
+        ${renderTask("🚶 Walk", data.walk, "interval_min")}
     `;
+
+    // ✅ ADD THIS BLOCK (MEDICATION FIX)
+    if (data.medication && data.medication.length > 0) {
+
+        let medHtml = `<div class="section">
+            <div class="section-title">💊 Medication</div>`;
+
+        data.medication.forEach(m => {
+            const times = m.doses.map(d =>
+                `${String(d.h).padStart(2,'0')}:${String(d.m).padStart(2,'0')}`
+            ).join(", ");
+
+            medHtml += `
+                <div>
+                    <b>${m.label}</b><br>
+                    ⏰ ${times}<br>
+                    📅 ${m.start} → ${m.end}<br>
+                    🗓 ${m.days.join(", ")}
+                </div>
+                <br>
+            `;
+        });
+
+        medHtml += `</div>`;
+
+        html += medHtml;
+    }
+
+    return html;
 }
+
 
 async function sendStructured() {
     const mode = document.getElementById("mode").value;
