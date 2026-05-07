@@ -99,13 +99,14 @@ body {
     cursor: pointer;
 }
 
+/* ✅ FIXED SPACING */
 .section {
-    margin-bottom: 12px;
+    margin-bottom: 6px;
 }
 
 .section-title {
     font-weight: 600;
-    margin-bottom: 6px;
+    margin-bottom: 2px;
 }
 </style>
 </head>
@@ -275,17 +276,15 @@ function formatConfig(data, activeWindow) {
             const eh = String(lap.eh).padStart(2,'0');
             const em = String(lap.em).padStart(2,'0');
 
-            lapText = `${sh}:${sm} → ${eh}:${em}`;
+            lapText = ` (${sh}:${sm} → ${eh}:${em})`;
         }
 
         html += `
             <div class="section">
                 <div class="section-title">🍅 Pomodoro</div>
                 <div>
-                    ${data.pomo.focus_min}/${data.pomo.break_min} min × 
-                    ${data.pomo.cycles} cycles
+                    ${data.pomo.focus_min}/${data.pomo.break_min} min × ${data.pomo.cycles} cycles${lapText}
                 </div>
-                <div>${lapText}</div>
             </div>
         `;
     }
@@ -309,7 +308,7 @@ function formatConfig(data, activeWindow) {
                 .join(", ");
 
             html += `
-                <div style="margin-bottom:10px;">
+                <div style="margin-bottom:6px;">
                     <b>${m.label}</b><br>
                     ⏰ ${times}<br>
                     📅 ${m.start} → ${m.end}
