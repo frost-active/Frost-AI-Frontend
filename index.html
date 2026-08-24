@@ -1,11 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Frost Assistant</title>
 
 <style>
+* {
+    box-sizing: border-box;
+}
+
 body {
     margin: 0;
     font-family: "Segoe UI", sans-serif;
@@ -18,8 +22,8 @@ body {
 
 .chat-wrapper {
     width: 95%;
-    max-width: 1000px;
-    height: 90vh;
+    max-width: 1100px;
+    height: 92vh;
     display: flex;
     background: white;
     border-radius: 14px;
@@ -48,6 +52,7 @@ body {
     background: #2563eb;
     color: white;
     font-weight: 600;
+    font-size: 17px;
 }
 
 .chat-messages {
@@ -58,12 +63,11 @@ body {
 }
 
 .message {
-    max-width: 80%;
+    max-width: 90%;
     margin-bottom: 12px;
     padding: 10px 14px;
     border-radius: 12px;
     font-size: 14px;
-    white-space: normal;
     line-height: 1.4;
 }
 
@@ -75,6 +79,125 @@ body {
 
 .bot {
     background: #e2e8f0;
+}
+
+.invalid-warning {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+.section {
+    margin-bottom: 10px;
+}
+
+.section-title {
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.medication-card {
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 8px;
+}
+
+.medication-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 7px 0;
+}
+
+.control-label {
+    font-weight: 600;
+}
+
+.stepper {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.stepper button {
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: 6px;
+    background: #2563eb;
+    color: white;
+    font-size: 17px;
+    cursor: pointer;
+}
+
+.stepper span {
+    min-width: 30px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.number-input {
+    width: 75px;
+    padding: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+.time-input {
+    padding: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+.date-input {
+    padding: 6px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+}
+
+.dose-list {
+    margin-top: 8px;
+    padding: 8px;
+    background: #f8fafc;
+    border-radius: 8px;
+}
+
+.dose-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 5px 0;
+}
+
+.save-btn {
+    margin-top: 10px;
+    width: 100%;
+    padding: 8px;
+    border: none;
+    border-radius: 7px;
+    background: #16a34a;
+    color: white;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.download-btn {
+    margin-top: 8px;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 7px;
+    background: #2563eb;
+    color: white;
+    cursor: pointer;
 }
 
 .chat-input {
@@ -100,14 +223,45 @@ body {
     cursor: pointer;
 }
 
-/* ✅ FIXED SPACING */
-.section {
-    margin-bottom: 6px;
+.chat-input button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
-.section-title {
-    font-weight: 600;
-    margin-bottom: 2px;
+.typing-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 10px 14px;
+}
+
+.typing-indicator span {
+    width: 7px;
+    height: 7px;
+    background: #64748b;
+    border-radius: 50%;
+    display: inline-block;
+    animation: typingBounce 1.2s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(2) {
+    animation-delay: 0.15s;
+}
+
+.typing-indicator span:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+@keyframes typingBounce {
+    0%, 60%, 100% {
+        transform: translateY(0);
+        opacity: 0.45;
+    }
+
+    30% {
+        transform: translateY(-4px);
+        opacity: 1;
+    }
 }
 </style>
 </head>
@@ -116,288 +270,1575 @@ body {
 
 <div class="chat-wrapper">
 
-<div class="chat-container">
+    <div class="chat-container">
 
-<div class="chat-header">🧠 Frost Assistant</div>
+        <div class="chat-header">
+            🧠 Frost Assistant
+        </div>
 
-<div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-messages" id="chatMessages"></div>
 
-<div class="chat-input">
-<input id="textInput" placeholder="Type your schedule..." />
-<button onclick="sendText()">Send</button>
+        <div class="chat-input">
+            <input
+                id="textInput"
+                placeholder="Type your schedule..."
+            >
+
+            <button
+                id="sendButton"
+                onclick="sendText()"
+            >
+                Send
+            </button>
+        </div>
+
+    </div>
+
+    <div class="log-panel">
+        <div><b>Logs</b></div>
+        <br>
+        <div id="logPanel"></div>
+    </div>
+
 </div>
 
-</div>
-
-<div class="log-panel">
-<div><b>Logs</b></div>
-<div id="logPanel"></div>
-</div>
-
-</div>
 
 <script>
 
-const API_URL = "https://frost-ai-eehc.onrender.com/parse";
+// Fill this in with your deployed Render backend URL once Step 2 is done
+const PRODUCTION_API_URL =
+    "https://frost-ai-eehc.onrender.com/parse";
+const isLocal = window.location.protocol === "file:" ||
+                window.location.hostname === "localhost" ||
+                window.location.hostname === "127.0.0.1";
+
+const API_URL = isLocal ? "http://127.0.0.1:5000/parse" : PRODUCTION_API_URL;
+
 let lastConfig = null;
 
-// =========================
-// MESSAGE HELPERS
-// =========================
+
+/* =========================================================
+   MESSAGE
+========================================================= */
+
+function scrollChatToBottom() {
+
+    const container =
+        document.getElementById("chatMessages");
+
+    if (!container) return;
+
+    requestAnimationFrame(() => {
+
+        requestAnimationFrame(() => {
+
+            container.scrollTop =
+                container.scrollHeight;
+        });
+    });
+}
+
+
 function addMessage(content, cls) {
+
     const div = document.createElement("div");
+
     div.className = "message " + cls;
+
     div.innerHTML = content;
 
-    document.getElementById("chatMessages").appendChild(div);
+    document
+        .getElementById("chatMessages")
+        .appendChild(div);
 
-    const container = document.getElementById("chatMessages");
-    container.scrollTop = container.scrollHeight;
+    scrollChatToBottom();
 }
+
+
+/* =========================================================
+   INVALID INPUT
+========================================================= */
+
+function renderInvalid(invalid) {
+
+    if (!invalid || !invalid.length) return;
+
+    const items = invalid
+        .map(i => `• ${escapeHtml(i.reason)}`)
+        .join("<br>");
+
+    addMessage(
+        `
+        <b>⚠️ Invalid input — not scheduled:</b><br>
+        ${items}
+        `,
+        "bot invalid-warning"
+    );
+}
+
+
+/* =========================================================
+   LOGS
+========================================================= */
 
 function renderLogs(logs) {
+
     document.getElementById("logPanel").innerHTML =
-        (logs || []).map((l,i)=>`[${i+1}] ${l}`).join("<br>");
+        (logs || [])
+            .map((l, i) => `[${i + 1}] ${escapeHtml(l)}`)
+            .join("<br>");
 }
 
-// =========================
-// WELCOME
-// =========================
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
+
+function escapeHtml(value) {
+
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+/* =========================================================
+   WELCOME
+========================================================= */
+
 function showWelcome() {
+
     addMessage(`
-        <b>Hi, I am your Frost Active Assistant.</b><br><br>
+        <b>Hi, I am your Frost Active Assistant.</b>
+        <br><br>
 
-        How would you like to schedule your device?<br><br>
+        How would you like to schedule your device?
+        <br><br>
 
-        You can also define your active working hours.<br><br>
-
-        Try:<br>
-        • "work from 9am to 6pm, drink water every 30 minutes"<br>
-        • "meditate from 1pm to 1:15pm"<br>
-        • "pomodoro 25/5 for 4 cycles from 9am to 12pm"<br>
+        Try:
+        <br>
+        • "work from 9am to 6pm, drink water every 30 minutes"
+        <br>
+        • "meditate from 1pm to 1:15pm"
+        <br>
+        • "pomodoro 25/5 for 4 cycles from 9am to 12pm"
+        <br>
         • "take medicine at 8am daily"
+        <br>
+        • "take medicine at 8am mon and wed 2 doses per day"
+        <br>
+        • "take medicine at 8am mon and wed 2 doses per day 30 mins reminder period"
     `, "bot");
 }
 
-// =========================
-// TIME FORMATTERS
-// =========================
-function formatTimeObj(t) {
-    return `${String(t.h).padStart(2,'0')}:${String(t.m).padStart(2,'0')}`;
+
+/* =========================================================
+   TIME HELPERS
+========================================================= */
+
+function pad2(n) {
+
+    return String(n).padStart(2, "0");
 }
 
-// =========================
-// CONFIG RENDERER
-// =========================
-function formatConfig(data, activeWindow) {
 
-    let html = "";
+function hm(h, m) {
 
-    // =========================
-    // ACTIVE HOURS
-    // =========================
-    if (activeWindow && activeWindow.start && activeWindow.end) {
-        html += `
-            <div class="section">
-                <div class="section-title">⏰ Active Hours</div>
-                <div>${activeWindow.start} → ${activeWindow.end}</div>
-            </div>
-        `;
-    }
+    return `${pad2(h)}:${pad2(m)}`;
+}
 
-    // =========================
-    // STANDARD TASKS
-    // =========================
-    function renderTask(name, obj, key) {
 
-        if (!obj || !obj.enabled) return "";
+function formatDisplayTime(h, m) {
 
-        if (obj.mode === "absolute" && obj.abs?.times?.length) {
+    h = Number(h);
+    m = Number(m);
 
-            const times = obj.abs.times
-                .map(formatTimeObj)
-                .join(", ");
+    const suffix = h >= 12 ? "PM" : "AM";
+
+    const displayHour = h % 12 || 12;
+
+    return `${displayHour}:${pad2(m)} ${suffix}`;
+}
+
+
+function formatTimeStr(t) {
+
+    if (!t) return t;
+
+    const [h, m] = t.split(":").map(Number);
+
+    return formatDisplayTime(h, m);
+}
+
+
+function timeToMinutes(time) {
+
+    const [h, m] = time.split(":").map(Number);
+
+    return h * 60 + m;
+}
+
+
+function minutesToDose(minutes) {
+
+    minutes = minutes % 1440;
+
+    const h = Math.floor(minutes / 60);
+
+    const m = minutes % 60;
+
+    return {
+        h,
+        m
+    };
+}
+
+
+/* =========================================================
+   INTERVAL / ABSOLUTE
+========================================================= */
+
+function msToMinutes(ms) {
+
+    return Math.round(ms / 60000);
+}
+
+
+function formatIntervalOrAbs(cfg) {
+
+    if (cfg.mode === "absolute") {
+
+        const times =
+            cfg.abs &&
+            Array.isArray(cfg.abs.times)
+                ? cfg.abs.times
+                : [];
+
+        if (times.length) {
 
             return `
-                <div class="section">
-                    <div><b>${name}</b>: ${times}</div>
-                </div>
+                At ${times
+                    .map(t =>
+                        formatDisplayTime(t.h, t.m)
+                    )
+                    .join(", ")}
             `;
         }
 
-        const val = key === "interval_ms"
-            ? Math.round(obj[key] / 60000)
-            : obj[key];
-
-        return `
-            <div class="section">
-                <div><b>${name}</b>: Every ${val} min</div>
-            </div>
-        `;
+        return "At scheduled time";
     }
 
-    html += `
-        ${renderTask("💧 Hydration", data.hydration, "interval_ms")}
-        ${renderTask("👁 Eye", data.eye, "interval_ms")}
-        ${renderTask("🏃 Stretch", data.stretch, "interval_ms")}
-        ${renderTask("🚶 Walk", data.walk, "interval_min")}
+
+    if (cfg.mode === "interval") {
+
+        if (cfg.interval_ms != null) {
+
+            return `
+                Every ${msToMinutes(cfg.interval_ms)}
+                minutes
+                (${formatDisplayTime(cfg.start_hour, cfg.start_min)}
+                → ${formatDisplayTime(cfg.end_hour, cfg.end_min)})
+            `;
+        }
+    }
+
+    return "";
+}
+
+
+/* =========================================================
+   DAYS
+========================================================= */
+
+function formatDays(days) {
+
+    if (!days || days.length === 0) {
+
+        return "Every day";
+    }
+
+    if (
+        days.length === 7
+    ) {
+
+        return "Every day";
+    }
+
+    return days
+        .map(d =>
+            d.charAt(0).toUpperCase() + d.slice(1)
+        )
+        .join(", ");
+}
+
+
+/* =========================================================
+   MEDICATION DOSE UI
+========================================================= */
+
+function renderMedication(med, index) {
+
+    const doses = med.doses || [];
+
+    const firstDose =
+        doses.length
+            ? hm(doses[0].h, doses[0].m)
+            : "08:00";
+
+
+    let html = `
+
+        <div class="medication-card">
+
+            <div class="medication-title">
+                💊 ${escapeHtml(med.label)}
+            </div>
+
+
+            <div class="control-row">
+
+                <span class="control-label">
+                    Doses per day
+                </span>
+
+                <div class="stepper">
+
+                    <button
+                        onclick="changeDoseCount(${index}, -1)"
+                    >
+                        −
+                    </button>
+
+                    <span id="doseCount-${index}">
+                        ${doses.length}
+                    </span>
+
+                    <button
+                        onclick="changeDoseCount(${index}, 1)"
+                    >
+                        +
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div class="control-row">
+
+                <span class="control-label">
+                    Minutes between doses
+                </span>
+
+                <input
+                    class="number-input"
+                    id="gap-${index}"
+                    type="number"
+                    min="1"
+                    max="1440"
+                    value="${med.gap_min || 0}"
+                    onchange="changeGap(${index})"
+                >
+
+            </div>
+
+
+            <div class="control-row">
+
+                <span class="control-label">
+                    Snooze time
+                </span>
+
+                <input
+                    class="number-input"
+                    id="snooze-${index}"
+                    type="number"
+                    min="0"
+                    max="1440"
+                    value="${med.snooze_min ?? 15}"
+                    onchange="changeSnooze(${index})"
+                >
+
+                <span>min</span>
+
+            </div>
+
+
+            <div class="control-row">
+
+                <span class="control-label">
+                    First dose
+                </span>
+
+                <input
+                    class="time-input"
+                    id="firstDose-${index}"
+                    type="time"
+                    value="${firstDose}"
+                    onchange="changeFirstDose(${index})"
+                >
+
+            </div>
+
+
+            <div class="control-row">
+
+                <span class="control-label">
+                    Start date
+                </span>
+
+                <input
+                    class="date-input"
+                    id="startDate-${index}"
+                    type="date"
+                    value="${med.start || ""}"
+                    onchange="changeStartDate(${index})"
+                >
+
+            </div>
+
+
+            <div class="control-row">
+
+                <span class="control-label">
+                    End date
+                </span>
+
+                <input
+                    class="date-input"
+                    id="endDate-${index}"
+                    type="date"
+                    value="${med.end || ""}"
+                    onchange="changeEndDate(${index})"
+                >
+
+            </div>
+
+
+            <div class="dose-list">
+
+                <b>Dose times</b>
+
+                <div id="doseList-${index}">
+                    ${renderDoseTimes(med, index)}
+                </div>
+
+            </div>
+
+
+            <div style="margin-top:8px;">
+                <b>Days:</b>
+                ${formatDays(med.days)}
+            </div>
+
+
+            <button
+                class="save-btn"
+                onclick="saveMedication(${index})"
+            >
+                Save Medication
+            </button>
+
+        </div>
     `;
-
-    // =========================
-    // MEDITATION
-    // =========================
-    if (data.meditation && data.meditation.enabled) {
-
-        const sh = String(data.meditation.sh).padStart(2,'0');
-        const sm = String(data.meditation.sm).padStart(2,'0');
-        const eh = String(data.meditation.eh).padStart(2,'0');
-        const em = String(data.meditation.em).padStart(2,'0');
-
-        html += `
-            <div class="section">
-                <div class="section-title">🧘 Meditation</div>
-                <div>${sh}:${sm} → ${eh}:${em}</div>
-            </div>
-        `;
-    }
-
-    // =========================
-    // POMODORO
-    // =========================
-    if (data.pomo && data.pomo.enabled) {
-
-        let lapText = "";
-
-        if (data.pomo.laps && data.pomo.laps.length > 0) {
-
-            const lap = data.pomo.laps[0];
-
-            const sh = String(lap.sh).padStart(2,'0');
-            const sm = String(lap.sm).padStart(2,'0');
-            const eh = String(lap.eh).padStart(2,'0');
-            const em = String(lap.em).padStart(2,'0');
-
-            lapText = ` (${sh}:${sm} → ${eh}:${em})`;
-        }
-
-        html += `
-            <div class="section">
-                <div class="section-title">🍅 Pomodoro</div>
-                <div>
-                    ${data.pomo.focus_min}/${data.pomo.break_min} min × ${data.pomo.cycles} cycles${lapText}
-                </div>
-            </div>
-        `;
-    }
-
-    // =========================
-    // MEDICATION
-    // =========================
-    if (data.medication && data.medication.length > 0) {
-
-        html += `
-            <div class="section">
-                <div class="section-title">💊 Medication</div>
-        `;
-
-        data.medication.forEach(m => {
-
-            const times = m.doses
-                .map(d =>
-                    `${String(d.h).padStart(2,'0')}:${String(d.m).padStart(2,'0')}`
-                )
-                .join(", ");
-
-            html += `
-                <div style="margin-bottom:6px;">
-                    <b>${m.label}</b><br>
-                    ⏰ ${times}<br>
-                    📅 ${m.start} → ${m.end}
-                </div>
-            `;
-        });
-
-        html += `</div>`;
-    }
 
     return html;
 }
 
-// =========================
-// SEND MESSAGE
-// =========================
-async function sendText() {
 
-    const input = document.getElementById("textInput");
-    const text = input.value.trim();
+function renderDoseTimes(med, index) {
 
-    if (!text) return;
+    const doses = med.doses || [];
 
-    addMessage(text, "user");
+    return doses.map((dose, doseIndex) => {
 
-    input.value = "";
+        return `
+            <div class="dose-row">
 
-    try {
+                <span>
+                    Dose ${doseIndex + 1}
+                </span>
 
-        const res = await fetch(API_URL, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({ text })
-        });
+                <input
+                    type="time"
+                    class="time-input"
+                    value="${hm(dose.h, dose.m)}"
+                    onchange="changeIndividualDose(
+                        ${index},
+                        ${doseIndex},
+                        this.value
+                    )"
+                >
 
-        const result = await res.json();
+            </div>
+        `;
 
-        lastConfig = result.data;
+    }).join("");
+}
 
-        addMessage(
-            formatConfig(result.data, result.active_window),
-            "bot"
+
+/* =========================================================
+   DOSE COUNT
+========================================================= */
+
+function changeDoseCount(index, amount) {
+
+    const med =
+        lastConfig.data
+            .reminders
+            .medication
+            .medicines[index];
+
+    let count =
+        (med.doses || []).length + amount;
+
+    if (count < 1) count = 1;
+
+    if (count > 12) count = 12;
+
+
+    const currentDoses =
+        med.doses || [];
+
+    const first =
+        currentDoses.length
+            ? currentDoses[0]
+            : { h: 8, m: 0 };
+
+
+    let gap =
+        Number(med.gap_min || 0);
+
+    if (gap <= 0) {
+
+        gap = 30;
+    }
+
+
+    const firstMinutes =
+        first.h * 60 + first.m;
+
+
+    const newDoses = [];
+
+
+    for (let i = 0; i < count; i++) {
+
+        newDoses.push(
+            minutesToDose(
+                firstMinutes + i * gap
+            )
+        );
+    }
+
+
+    med.doses = newDoses;
+
+    med.dose_count = count;
+
+    med.gap_min = gap;
+
+
+    refreshMedicationUI();
+}
+
+
+/* =========================================================
+   GAP
+========================================================= */
+
+function changeGap(index) {
+
+    const med =
+        lastConfig.data
+            .reminders
+            .medication
+            .medicines[index];
+
+    let gap =
+        Number(
+            document.getElementById(
+                `gap-${index}`
+            ).value
         );
 
-        renderLogs(result.logs);
+    if (gap < 1) gap = 1;
 
-        // =========================
-        // AUTO DOWNLOAD JSON
-        // =========================
-        if (lastConfig) {
+    if (gap > 1440) gap = 1440;
 
-            const blob = new Blob(
-                [JSON.stringify(lastConfig, null, 2)],
-                { type: "application/json" }
+
+    med.gap_min = gap;
+
+
+    const first =
+        med.doses && med.doses.length
+            ? med.doses[0]
+            : { h: 8, m: 0 };
+
+
+    const firstMinutes =
+        first.h * 60 + first.m;
+
+
+    med.doses =
+        med.doses.map((dose, i) => {
+
+            return minutesToDose(
+                firstMinutes + i * gap
             );
 
-            const url = URL.createObjectURL(blob);
+        });
 
-            const a = document.createElement("a");
 
-            const now = new Date();
+    refreshMedicationUI();
+}
 
-            a.download =
-                `schedule_${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}.json`;
 
-            a.href = url;
+/* =========================================================
+   SNOOZE
+========================================================= */
 
-            a.click();
+function changeSnooze(index) {
 
-            URL.revokeObjectURL(url);
-        }
+    const med =
+        lastConfig.data
+            .reminders
+            .medication
+            .medicines[index];
 
-    } catch (err) {
-
-        addMessage(
-            "Something went wrong while contacting the backend.",
-            "bot"
+    let snooze =
+        Number(
+            document.getElementById(
+                `snooze-${index}`
+            ).value
         );
 
-        console.error(err);
+    if (snooze < 0) snooze = 0;
+
+    if (snooze > 1440) snooze = 1440;
+
+
+    med.snooze_min = snooze;
+
+
+    lastConfig.data
+        .reminders
+        .medication
+        .snooze_min = snooze;
+}
+
+
+/* =========================================================
+   FIRST DOSE
+========================================================= */
+
+function changeFirstDose(index) {
+
+    const med =
+        lastConfig.data
+            .reminders
+            .medication
+            .medicines[index];
+
+    const value =
+        document.getElementById(
+            `firstDose-${index}`
+        ).value;
+
+    const firstMinutes =
+        timeToMinutes(value);
+
+
+    let gap =
+        Number(med.gap_min || 30);
+
+
+    if (gap < 1) gap = 30;
+
+
+    med.doses =
+        med.doses.map((dose, i) => {
+
+            return minutesToDose(
+                firstMinutes + i * gap
+            );
+
+        });
+
+
+    refreshMedicationUI();
+}
+
+
+/* =========================================================
+   INDIVIDUAL DOSE
+========================================================= */
+
+function changeIndividualDose(
+    medIndex,
+    doseIndex,
+    value
+) {
+
+    const med =
+        lastConfig.data
+            .reminders
+            .medication
+            .medicines[medIndex];
+
+    const [h, m] =
+        value.split(":").map(Number);
+
+
+    med.doses[doseIndex] = {
+        h,
+        m
+    };
+
+
+    refreshMedicationUI();
+}
+
+
+/* =========================================================
+   DATE VALIDATION
+========================================================= */
+
+function changeStartDate(index) {
+
+    const med =
+        lastConfig.data
+            .reminders
+            .medication
+            .medicines[index];
+
+    const start =
+        document.getElementById(
+            `startDate-${index}`
+        ).value;
+
+    const end =
+        med.end;
+
+
+    if (start && end && start > end) {
+
+        med.end = start;
+
+        document.getElementById(
+            `endDate-${index}`
+        ).value = start;
+    }
+
+
+    med.start = start;
+}
+
+
+function changeEndDate(index) {
+
+    const med =
+        lastConfig.data
+            .reminders
+            .medication
+            .medicines[index];
+
+    const end =
+        document.getElementById(
+            `endDate-${index}`
+        ).value;
+
+    const start =
+        med.start;
+
+
+    if (start && end && end < start) {
+
+        alert(
+            "End date cannot be before start date."
+        );
+
+        document.getElementById(
+            `endDate-${index}`
+        ).value = start;
+
+        med.end = start;
+
+        return;
+    }
+
+
+    med.end = end;
+}
+
+
+/* =========================================================
+   REFRESH MEDICATION UI
+========================================================= */
+
+function refreshMedicationUI() {
+
+    if (!lastConfig) return;
+
+
+    const medBlock =
+        lastConfig.data
+            .reminders
+            .medication;
+
+
+    const container =
+        document.getElementById(
+            "currentMedicationControls"
+        );
+
+
+    if (!container) return;
+
+
+    container.innerHTML =
+        medBlock.medicines
+            .map((med, index) =>
+                renderMedication(med, index)
+            )
+            .join("");
+}
+
+
+/* =========================================================
+   SAVE MEDICATION
+========================================================= */
+
+function saveMedication(index) {
+
+    const med =
+        lastConfig &&
+        lastConfig.data &&
+        lastConfig.data.reminders &&
+        lastConfig.data.reminders.medication &&
+        lastConfig.data.reminders.medication.medicines
+            ? lastConfig.data.reminders.medication.medicines[index]
+            : null;
+
+    if (!med) {
+
+        addMessage(
+            `
+            <b>⚠️ Couldn't save.</b><br>
+            That medication entry no longer exists —
+            try sending your schedule again.
+            `,
+            "bot invalid-warning"
+        );
+
+        return;
+    }
+
+
+    /*
+       Keep global medication snooze
+       synchronized with the medication.
+    */
+
+    lastConfig.data
+        .reminders
+        .medication
+        .snooze_min =
+            Number(med.snooze_min || 0);
+
+
+    /*
+       Close the editable table instead of
+       re-rendering it after save.
+    */
+
+    const editor =
+        document.getElementById("scheduleEditor");
+
+    if (editor) editor.remove();
+
+
+    /*
+       Update the confirmation message in place
+       instead of appending a new one on every click.
+    */
+
+    let confirmDiv =
+        document.getElementById("medicationSavedMsg");
+
+    if (confirmDiv) {
+
+        confirmDiv.remove();
+    }
+
+    confirmDiv =
+        document.createElement("div");
+
+    confirmDiv.className = "message bot";
+    confirmDiv.id = "medicationSavedMsg";
+
+    confirmDiv.innerHTML = `
+        <b>💊 Medication updated</b><br>
+        ${escapeHtml(med.label)}<br>
+        Doses: ${med.doses.length}<br>
+        Snooze: ${med.snooze_min} minutes<br>
+        Gap: ${med.gap_min || 0} minutes
+    `;
+
+    document
+        .getElementById("chatMessages")
+        .appendChild(confirmDiv);
+
+    scrollChatToBottom();
+
+
+    downloadJSON();
+}
+
+
+/* =========================================================
+   FORMAT SCHEDULE
+========================================================= */
+
+function formatCurrentSchedule() {
+
+    if (!lastConfig) {
+
+        return "<div>No schedule information found.</div>";
+    }
+
+
+    const data =
+        lastConfig.data || {};
+
+    const reminders =
+        data.reminders || {};
+
+    let html = "";
+
+
+    /* ACTIVE HOURS */
+
+    if (
+        lastConfig.active_window &&
+        lastConfig.active_window.start &&
+        lastConfig.active_window.end
+    ) {
+
+        html += `
+            <div class="section">
+
+                <div class="section-title">
+                    ⏰ Active Hours
+                </div>
+
+                <div>
+                    ${formatTimeStr(lastConfig.active_window.start)}
+                    →
+                    ${formatTimeStr(lastConfig.active_window.end)}
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    /* HYDRATION */
+
+    if (
+        reminders.hydration &&
+        reminders.hydration.enabled
+    ) {
+
+        html += `
+            <div class="section">
+
+                <div class="section-title">
+                    💧 Hydration
+                </div>
+
+                <div>
+                    ${formatIntervalOrAbs(
+                        reminders.hydration
+                    )}
+                </div>
+
+                <div>
+                    Days:
+                    ${formatDays(
+                        reminders.hydration.days
+                    )}
+                </div>
+
+                ${
+                    reminders.hydration.goal_ml
+                        ? `<div>
+                            Daily Goal:
+                            ${reminders.hydration.goal_ml}
+                            mL
+                           </div>`
+                        : ""
+                }
+
+            </div>
+        `;
+    }
+
+
+    /* EYE */
+
+    if (
+        reminders.eye &&
+        reminders.eye.enabled
+    ) {
+
+        html += `
+            <div class="section">
+
+                <div class="section-title">
+                    👁️ Eye Break
+                </div>
+
+                <div>
+                    ${formatIntervalOrAbs(
+                        reminders.eye
+                    )}
+                </div>
+
+                <div>
+                    Days:
+                    ${formatDays(
+                        reminders.eye.days
+                    )}
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    /* STRETCH */
+
+    if (
+        reminders.stretch &&
+        reminders.stretch.enabled
+    ) {
+
+        html += `
+            <div class="section">
+
+                <div class="section-title">
+                    🧘 Stretch
+                </div>
+
+                <div>
+                    ${formatIntervalOrAbs(
+                        reminders.stretch
+                    )}
+                </div>
+
+                <div>
+                    Days:
+                    ${formatDays(
+                        reminders.stretch.days
+                    )}
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    /* WALK */
+
+    if (
+        reminders.walk &&
+        reminders.walk.enabled
+    ) {
+
+        html += `
+            <div class="section">
+
+                <div class="section-title">
+                    🚶 Walk
+                </div>
+
+                <div>
+                    ${formatIntervalOrAbs(
+                        reminders.walk
+                    )}
+                </div>
+
+                <div>
+                    Days:
+                    ${formatDays(
+                        reminders.walk.days
+                    )}
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    /* MEDITATION */
+
+    if (
+        reminders.meditation &&
+        reminders.meditation.enabled
+    ) {
+
+        html += `
+            <div class="section">
+
+                <div class="section-title">
+                    🧘 Meditation
+                </div>
+
+                <div>
+                    ${formatDisplayTime(
+                        reminders.meditation.sh,
+                        reminders.meditation.sm
+                    )}
+                    →
+                    ${formatDisplayTime(
+                        reminders.meditation.eh,
+                        reminders.meditation.em
+                    )}
+                </div>
+
+                <div>
+                    Days:
+                    ${formatDays(
+                        reminders.meditation.days
+                    )}
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    /* POMODORO */
+
+    const pomo =
+        data.pomodoro;
+
+
+    if (
+        pomo &&
+        pomo.enabled
+    ) {
+
+        html += `
+            <div class="section">
+
+                <div class="section-title">
+                    🍅 Pomodoro
+                </div>
+
+                <div>
+                    Focus ${pomo.focus_min} min /
+                    Break ${pomo.break_min} min ×
+                    ${pomo.cycles} cycles
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    /* MEDICATION */
+
+    const medBlock =
+        reminders.medication;
+
+
+    if (
+        medBlock &&
+        medBlock.enabled &&
+        medBlock.medicines &&
+        medBlock.medicines.length
+    ) {
+
+        html += `
+            <div class="section">
+
+                <div class="section-title">
+                    💊 Medication
+                </div>
+
+                <div>
+                    Reminder snooze:
+                    ${medBlock.snooze_min || 0}
+                    minutes
+                </div>
+
+                <div id="currentMedicationControls">
+        `;
+
+
+        medBlock.medicines.forEach(
+            (med, index) => {
+
+                html += renderMedication(
+                    med,
+                    index
+                );
+            }
+        );
+
+
+        html += `
+                </div>
+
+            </div>
+        `;
+    }
+
+
+    return html ||
+        "<div>No schedule information found for this message.</div>";
+}
+
+
+/* =========================================================
+   RENDER CURRENT SCHEDULE
+========================================================= */
+
+function renderCurrentSchedule() {
+
+    const messages =
+        document.getElementById(
+            "chatMessages"
+        );
+
+
+    const old =
+        document.getElementById(
+            "scheduleEditor"
+        );
+
+
+    if (old) old.remove();
+
+
+    const div =
+        document.createElement("div");
+
+
+    div.className =
+        "message bot";
+
+    div.id =
+        "scheduleEditor";
+
+
+    div.innerHTML =
+        formatCurrentSchedule();
+
+
+    messages.appendChild(div);
+
+
+    scrollChatToBottom();
+}
+
+
+/* =========================================================
+   TYPING
+========================================================= */
+
+function showTyping() {
+
+    const div =
+        document.createElement("div");
+
+
+    div.className =
+        "message bot typing-indicator";
+
+
+    div.id =
+        "typingIndicator";
+
+
+    div.innerHTML =
+        "<span></span><span></span><span></span>";
+
+
+    document
+        .getElementById("chatMessages")
+        .appendChild(div);
+}
+
+
+function hideTyping() {
+
+    const typing =
+        document.getElementById(
+            "typingIndicator"
+        );
+
+
+    if (typing) {
+
+        typing.remove();
     }
 }
 
-// =========================
-// INIT
-// =========================
+
+/* =========================================================
+   SEND STATE
+========================================================= */
+
+function setSendingState(sending) {
+
+    const input =
+        document.getElementById(
+            "textInput"
+        );
+
+    const button =
+        document.getElementById(
+            "sendButton"
+        );
+
+
+    input.disabled =
+        sending;
+
+    button.disabled =
+        sending;
+}
+
+
+/* =========================================================
+   DOWNLOAD JSON
+========================================================= */
+
+function downloadJSON() {
+
+    if (!lastConfig) return;
+
+
+    const blob =
+        new Blob(
+            [
+                JSON.stringify(
+                    lastConfig,
+                    null,
+                    2
+                )
+            ],
+            {
+                type: "application/json"
+            }
+        );
+
+
+    const url =
+        URL.createObjectURL(blob);
+
+
+    const a =
+        document.createElement("a");
+
+
+    const now =
+        new Date();
+
+
+    a.download =
+        `schedule_${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}.json`;
+
+
+    a.href =
+        url;
+
+
+    a.click();
+
+
+    URL.revokeObjectURL(url);
+}
+
+
+/* =========================================================
+   SEND TO BACKEND
+========================================================= */
+
+async function sendText() {
+
+    const input =
+        document.getElementById(
+            "textInput"
+        );
+
+
+    const text =
+        input.value.trim();
+
+
+    if (!text) return;
+
+
+    addMessage(
+        escapeHtml(text),
+        "user"
+    );
+
+
+    input.value = "";
+
+
+    setSendingState(true);
+
+    showTyping();
+
+
+    try {
+
+        const res =
+            await fetch(
+                API_URL,
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json"
+                    },
+
+                    body:
+                        JSON.stringify({
+                            text
+                        })
+                }
+            );
+
+
+        const result =
+            await res.json();
+
+
+        hideTyping();
+
+
+        if (!res.ok || result.error) {
+
+            addMessage(
+                `
+                <b>Backend error:</b><br>
+                ${escapeHtml(
+                    result.error ||
+                    "Unknown error"
+                )}
+                `,
+                "bot"
+            );
+
+            renderLogs(
+                result.logs
+            );
+
+            return;
+        }
+
+
+        lastConfig =
+            result;
+
+
+        try {
+
+            renderCurrentSchedule();
+
+            renderInvalid(
+                result.invalid
+            );
+
+            renderLogs(
+                result.logs
+            );
+
+            downloadJSON();
+
+        } catch (renderErr) {
+
+            console.error(renderErr);
+
+            addMessage(
+                `
+                <b>⚠️ Couldn't display the schedule.</b><br>
+                ${escapeHtml(renderErr.message || String(renderErr))}
+                `,
+                "bot invalid-warning"
+            );
+
+            renderLogs(result.logs);
+        }
+
+
+    } catch (err) {
+
+        hideTyping();
+
+
+        addMessage(
+            `
+            <b>Connection error.</b><br>
+            Make sure the Flask backend is running
+            on port 5000.
+            `,
+            "bot"
+        );
+
+
+        console.error(err);
+
+
+    } finally {
+
+        setSendingState(false);
+
+        input.focus();
+    }
+}
+
+
+/* =========================================================
+   ENTER KEY
+========================================================= */
+
+document
+    .getElementById("textInput")
+    .addEventListener(
+        "keydown",
+        function(event) {
+
+            if (
+                event.key === "Enter"
+            ) {
+
+                event.preventDefault();
+
+                if (!this.disabled) {
+
+                    sendText();
+                }
+            }
+        }
+    );
+
+
+/* =========================================================
+   START
+========================================================= */
+
 showWelcome();
 
 </script>
