@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <title>Frost Assistant</title>
 
 <style>
@@ -12,7 +13,7 @@
 
 body {
     margin: 0;
-    font-family: "Segoe UI", sans-serif;
+    font-family: "Segoe UI", Arial, sans-serif;
     background: #0f172a;
     display: flex;
     justify-content: center;
@@ -28,17 +29,19 @@ body {
     background: white;
     border-radius: 14px;
     overflow: hidden;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
 }
 
 .chat-container {
     width: 65%;
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .log-panel {
     width: 35%;
-    background: #111;
+    background: #111827;
     color: #9f9;
     font-family: monospace;
     font-size: 12px;
@@ -69,6 +72,7 @@ body {
     border-radius: 12px;
     font-size: 14px;
     line-height: 1.4;
+    overflow-wrap: anywhere;
 }
 
 .user {
@@ -79,6 +83,7 @@ body {
 
 .bot {
     background: #e2e8f0;
+    color: #0f172a;
 }
 
 .invalid-warning {
@@ -139,6 +144,10 @@ body {
     cursor: pointer;
 }
 
+.stepper button:hover {
+    background: #1d4ed8;
+}
+
 .stepper span {
     min-width: 30px;
     text-align: center;
@@ -152,12 +161,7 @@ body {
     border-radius: 6px;
 }
 
-.time-input {
-    padding: 6px;
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-}
-
+.time-input,
 .date-input {
     padding: 6px;
     border: 1px solid #cbd5e1;
@@ -175,6 +179,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 8px;
     margin: 5px 0;
 }
 
@@ -190,42 +195,131 @@ body {
     font-weight: 600;
 }
 
-.download-btn {
-    margin-top: 8px;
-    padding: 8px 12px;
-    border: none;
-    border-radius: 7px;
-    background: #2563eb;
-    color: white;
-    cursor: pointer;
+.save-btn:hover {
+    background: #15803d;
 }
 
 .chat-input {
     display: flex;
-    padding: 10px;
-    border-top: 1px solid #ddd;
+    align-items: center;
+    gap: 8px;
+    padding: 12px;
+    background: #eff6ff;
+    border-top: 1px solid #bfdbfe;
+}
+
+.composer {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px 4px 12px;
+    background: white;
+    border: 1px solid #93c5fd;
+    border-radius: 999px;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.08);
+}
+
+.composer:focus-within {
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
 .chat-input input {
     flex: 1;
-    padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #ccc;
+    min-width: 0;
+    padding: 9px 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #172554;
+    font-size: 14px;
 }
 
-.chat-input button {
-    margin-left: 8px;
-    padding: 10px 14px;
+.chat-input input::placeholder {
+    color: #64748b;
+}
+
+#micButton,
+#sendButton {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
     border: none;
-    border-radius: 8px;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+#micButton {
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    padding: 0;
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: none;
+    border-radius: 50%;
+
     background: #2563eb;
     color: white;
+
+    font-size: 19px;
+    line-height: 1;
     cursor: pointer;
+
+    transition: 0.2s ease;
 }
 
-.chat-input button:disabled {
-    opacity: 0.6;
+#micButton:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+#micButton.listening {
+    background: #dc2626;
+    color: white;
+    animation: micPulse 1s infinite;
+}
+
+#sendButton {
+    width: 40px;
+    height: 40px;
+    margin: 0;
+    padding: 0;
+    border-radius: 50%;
+    background: #2563eb;
+    color: white;
+    font-size: 20px;
+    line-height: 1;
+}
+
+#sendButton:hover {
+    background: #1d4ed8;
+    transform: translateY(-1px);
+}
+
+#micButton:disabled,
+#sendButton:disabled {
+    opacity: 0.55;
     cursor: not-allowed;
+    transform: none;
+}
+
+@keyframes micPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.25);
+    }
+
+    50% {
+        transform: scale(1.08);
+        box-shadow: 0 0 0 7px rgba(220, 38, 38, 0.08);
+    }
 }
 
 .typing-indicator {
@@ -263,6 +357,26 @@ body {
         opacity: 1;
     }
 }
+
+@media (max-width: 700px) {
+    body {
+        align-items: stretch;
+    }
+
+    .chat-wrapper {
+        width: 100%;
+        height: 100vh;
+        border-radius: 0;
+    }
+
+    .chat-container {
+        width: 100%;
+    }
+
+    .log-panel {
+        display: none;
+    }
+}
 </style>
 </head>
 
@@ -279,17 +393,39 @@ body {
         <div class="chat-messages" id="chatMessages"></div>
 
         <div class="chat-input">
-            <input
-                id="textInput"
-                placeholder="Type your schedule..."
-            >
+
+            <div class="composer">
+
+                <input
+                    id="textInput"
+                    type="text"
+                    placeholder="Type your schedule..."
+                    autocomplete="off"
+                    aria-label="Schedule message"
+                >
+
+                <button
+                    id="micButton"
+                    type="button"
+                    onclick="toggleVoiceInput()"
+                    title="Voice input"
+                    aria-label="Voice input"
+                >
+                    🎙️
+                </button>
+
+            </div>
 
             <button
                 id="sendButton"
+                type="button"
                 onclick="sendText()"
+                title="Send message"
+                aria-label="Send message"
             >
-                Send
+                ➤
             </button>
+
         </div>
 
     </div>
@@ -302,50 +438,50 @@ body {
 
 </div>
 
-
 <script>
-
-// Fill this in with your deployed Render backend URL once Step 2 is done
 const PRODUCTION_API_URL =
     "https://frost-ai-eehc.onrender.com/parse";
-const isLocal = window.location.protocol === "file:" ||
-                window.location.hostname === "localhost" ||
-                window.location.hostname === "127.0.0.1";
 
-const API_URL = isLocal ? "http://127.0.0.1:5000/parse" : PRODUCTION_API_URL;
+const isLocal =
+    window.location.protocol === "file:" ||
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1";
+
+const API_URL =
+    isLocal
+        ? "http://127.0.0.1:5000/parse"
+        : PRODUCTION_API_URL;
 
 let lastConfig = null;
 
 
 /* =========================================================
-   MESSAGE
+   MESSAGE FUNCTIONS
 ========================================================= */
 
 function scrollChatToBottom() {
-
     const container =
         document.getElementById("chatMessages");
 
     if (!container) return;
 
     requestAnimationFrame(() => {
-
         requestAnimationFrame(() => {
-
             container.scrollTop =
                 container.scrollHeight;
         });
     });
 }
 
-
 function addMessage(content, cls) {
+    const div =
+        document.createElement("div");
 
-    const div = document.createElement("div");
+    div.className =
+        "message " + cls;
 
-    div.className = "message " + cls;
-
-    div.innerHTML = content;
+    div.innerHTML =
+        content;
 
     document
         .getElementById("chatMessages")
@@ -356,16 +492,32 @@ function addMessage(content, cls) {
 
 
 /* =========================================================
+   SECURITY
+========================================================= */
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+
+/* =========================================================
    INVALID INPUT
 ========================================================= */
 
 function renderInvalid(invalid) {
-
     if (!invalid || !invalid.length) return;
 
-    const items = invalid
-        .map(i => `• ${escapeHtml(i.reason)}`)
-        .join("<br>");
+    const items =
+        invalid
+            .map(item =>
+                `• ${escapeHtml(item.reason)}`
+            )
+            .join("<br>");
 
     addMessage(
         `
@@ -382,36 +534,22 @@ function renderInvalid(invalid) {
 ========================================================= */
 
 function renderLogs(logs) {
-
     document.getElementById("logPanel").innerHTML =
         (logs || [])
-            .map((l, i) => `[${i + 1}] ${escapeHtml(l)}`)
+            .map((log, index) =>
+                `[${index + 1}] ${escapeHtml(log)}`
+            )
             .join("<br>");
 }
 
 
 /* =========================================================
-   ESCAPE HTML
-========================================================= */
-
-function escapeHtml(value) {
-
-    return String(value)
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-}
-
-
-/* =========================================================
-   WELCOME
+   WELCOME MESSAGE
 ========================================================= */
 
 function showWelcome() {
-
-    addMessage(`
+    addMessage(
+        `
         <b>Hi, I am your Frost Active Assistant.</b>
         <br><br>
 
@@ -431,7 +569,9 @@ function showWelcome() {
         • "take medicine at 8am mon and wed 2 doses per day"
         <br>
         • "take medicine at 8am mon and wed 2 doses per day 30 mins reminder period"
-    `, "bot");
+        `,
+        "bot"
+    );
 }
 
 
@@ -439,90 +579,86 @@ function showWelcome() {
    TIME HELPERS
 ========================================================= */
 
-function pad2(n) {
-
-    return String(n).padStart(2, "0");
+function pad2(number) {
+    return String(number).padStart(2, "0");
 }
 
-
-function hm(h, m) {
-
-    return `${pad2(h)}:${pad2(m)}`;
+function hm(hour, minute) {
+    return `${pad2(hour)}:${pad2(minute)}`;
 }
 
+function formatDisplayTime(hour, minute) {
+    hour = Number(hour);
+    minute = Number(minute);
 
-function formatDisplayTime(h, m) {
+    const suffix =
+        hour >= 12
+            ? "PM"
+            : "AM";
 
-    h = Number(h);
-    m = Number(m);
+    const displayHour =
+        hour % 12 || 12;
 
-    const suffix = h >= 12 ? "PM" : "AM";
-
-    const displayHour = h % 12 || 12;
-
-    return `${displayHour}:${pad2(m)} ${suffix}`;
+    return `${displayHour}:${pad2(minute)} ${suffix}`;
 }
 
+function formatTimeStr(time) {
+    if (!time) return time;
 
-function formatTimeStr(t) {
+    const parts =
+        time.split(":").map(Number);
 
-    if (!t) return t;
-
-    const [h, m] = t.split(":").map(Number);
-
-    return formatDisplayTime(h, m);
+    return formatDisplayTime(
+        parts[0],
+        parts[1]
+    );
 }
-
 
 function timeToMinutes(time) {
+    const parts =
+        time.split(":").map(Number);
 
-    const [h, m] = time.split(":").map(Number);
-
-    return h * 60 + m;
+    return parts[0] * 60 + parts[1];
 }
 
-
 function minutesToDose(minutes) {
+    minutes =
+        ((minutes % 1440) + 1440) % 1440;
 
-    minutes = minutes % 1440;
+    const hour =
+        Math.floor(minutes / 60);
 
-    const h = Math.floor(minutes / 60);
-
-    const m = minutes % 60;
+    const minute =
+        minutes % 60;
 
     return {
-        h,
-        m
+        h: hour,
+        m: minute
     };
 }
 
-
-/* =========================================================
-   INTERVAL / ABSOLUTE
-========================================================= */
-
-function msToMinutes(ms) {
-
-    return Math.round(ms / 60000);
+function msToMinutes(milliseconds) {
+    return Math.round(
+        milliseconds / 60000
+    );
 }
 
-
-function formatIntervalOrAbs(cfg) {
-
-    if (cfg.mode === "absolute") {
-
+function formatIntervalOrAbs(config) {
+    if (config.mode === "absolute") {
         const times =
-            cfg.abs &&
-            Array.isArray(cfg.abs.times)
-                ? cfg.abs.times
+            config.abs &&
+            Array.isArray(config.abs.times)
+                ? config.abs.times
                 : [];
 
         if (times.length) {
-
             return `
                 At ${times
-                    .map(t =>
-                        formatDisplayTime(t.h, t.m)
+                    .map(time =>
+                        formatDisplayTime(
+                            time.h,
+                            time.m
+                        )
                     )
                     .join(", ")}
             `;
@@ -531,18 +667,23 @@ function formatIntervalOrAbs(cfg) {
         return "At scheduled time";
     }
 
-
-    if (cfg.mode === "interval") {
-
-        if (cfg.interval_ms != null) {
-
-            return `
-                Every ${msToMinutes(cfg.interval_ms)}
-                minutes
-                (${formatDisplayTime(cfg.start_hour, cfg.start_min)}
-                → ${formatDisplayTime(cfg.end_hour, cfg.end_min)})
-            `;
-        }
+    if (
+        config.mode === "interval" &&
+        config.interval_ms != null
+    ) {
+        return `
+            Every ${msToMinutes(config.interval_ms)}
+            minutes
+            (${formatDisplayTime(
+                config.start_hour,
+                config.start_min
+            )}
+            →
+            ${formatDisplayTime(
+                config.end_hour,
+                config.end_min
+            )})
+        `;
     }
 
     return "";
@@ -554,52 +695,44 @@ function formatIntervalOrAbs(cfg) {
 ========================================================= */
 
 function formatDays(days) {
-
     if (!days || days.length === 0) {
-
         return "Every day";
     }
 
-    if (
-        days.length === 7
-    ) {
-
+    if (days.length === 7) {
         return "Every day";
     }
 
     return days
-        .map(d =>
-            d.charAt(0).toUpperCase() + d.slice(1)
+        .map(day =>
+            day.charAt(0).toUpperCase() +
+            day.slice(1)
         )
         .join(", ");
 }
 
 
 /* =========================================================
-   MEDICATION DOSE UI
+   MEDICATION UI
 ========================================================= */
 
-function renderMedication(med, index) {
-
-    const doses = med.doses || [];
+function renderMedication(medication, index) {
+    const doses =
+        medication.doses || [];
 
     const firstDose =
         doses.length
             ? hm(doses[0].h, doses[0].m)
             : "08:00";
 
-
-    let html = `
-
+    return `
         <div class="medication-card">
 
             <div class="medication-title">
-                💊 ${escapeHtml(med.label)}
+                💊 ${escapeHtml(medication.label)}
             </div>
 
-
             <div class="control-row">
-
                 <span class="control-label">
                     Doses per day
                 </span>
@@ -607,6 +740,7 @@ function renderMedication(med, index) {
                 <div class="stepper">
 
                     <button
+                        type="button"
                         onclick="changeDoseCount(${index}, -1)"
                     >
                         −
@@ -617,18 +751,16 @@ function renderMedication(med, index) {
                     </span>
 
                     <button
+                        type="button"
                         onclick="changeDoseCount(${index}, 1)"
                     >
                         +
                     </button>
 
                 </div>
-
             </div>
 
-
             <div class="control-row">
-
                 <span class="control-label">
                     Minutes between doses
                 </span>
@@ -639,15 +771,12 @@ function renderMedication(med, index) {
                     type="number"
                     min="1"
                     max="1440"
-                    value="${med.gap_min || 0}"
+                    value="${medication.gap_min || 0}"
                     onchange="changeGap(${index})"
                 >
-
             </div>
 
-
             <div class="control-row">
-
                 <span class="control-label">
                     Snooze time
                 </span>
@@ -658,17 +787,14 @@ function renderMedication(med, index) {
                     type="number"
                     min="0"
                     max="1440"
-                    value="${med.snooze_min ?? 15}"
+                    value="${medication.snooze_min ?? 15}"
                     onchange="changeSnooze(${index})"
                 >
 
                 <span>min</span>
-
             </div>
 
-
             <div class="control-row">
-
                 <span class="control-label">
                     First dose
                 </span>
@@ -680,12 +806,9 @@ function renderMedication(med, index) {
                     value="${firstDose}"
                     onchange="changeFirstDose(${index})"
                 >
-
             </div>
 
-
             <div class="control-row">
-
                 <span class="control-label">
                     Start date
                 </span>
@@ -694,15 +817,12 @@ function renderMedication(med, index) {
                     class="date-input"
                     id="startDate-${index}"
                     type="date"
-                    value="${med.start || ""}"
+                    value="${medication.start || ""}"
                     onchange="changeStartDate(${index})"
                 >
-
             </div>
 
-
             <div class="control-row">
-
                 <span class="control-label">
                     End date
                 </span>
@@ -711,32 +831,27 @@ function renderMedication(med, index) {
                     class="date-input"
                     id="endDate-${index}"
                     type="date"
-                    value="${med.end || ""}"
+                    value="${medication.end || ""}"
                     onchange="changeEndDate(${index})"
                 >
-
             </div>
 
-
             <div class="dose-list">
-
                 <b>Dose times</b>
 
                 <div id="doseList-${index}">
-                    ${renderDoseTimes(med, index)}
+                    ${renderDoseTimes(medication, index)}
                 </div>
-
             </div>
 
-
-            <div style="margin-top:8px;">
+            <div style="margin-top: 8px;">
                 <b>Days:</b>
-                ${formatDays(med.days)}
+                ${formatDays(medication.days)}
             </div>
-
 
             <button
                 class="save-btn"
+                type="button"
                 onclick="saveMedication(${index})"
             >
                 Save Medication
@@ -744,18 +859,14 @@ function renderMedication(med, index) {
 
         </div>
     `;
-
-    return html;
 }
 
+function renderDoseTimes(medication, index) {
+    const doses =
+        medication.doses || [];
 
-function renderDoseTimes(med, index) {
-
-    const doses = med.doses || [];
-
-    return doses.map((dose, doseIndex) => {
-
-        return `
+    return doses
+        .map((dose, doseIndex) => `
             <div class="dose-row">
 
                 <span>
@@ -774,89 +885,78 @@ function renderDoseTimes(med, index) {
                 >
 
             </div>
-        `;
-
-    }).join("");
+        `)
+        .join("");
 }
 
 
 /* =========================================================
-   DOSE COUNT
+   MEDICATION EDITING
 ========================================================= */
 
-function changeDoseCount(index, amount) {
+function getMedication(index) {
+    return lastConfig &&
+        lastConfig.data &&
+        lastConfig.data.reminders &&
+        lastConfig.data.reminders.medication &&
+        lastConfig.data.reminders.medication.medicines
+        ? lastConfig.data.reminders.medication.medicines[index]
+        : null;
+}
 
-    const med =
-        lastConfig.data
-            .reminders
-            .medication
-            .medicines[index];
+function changeDoseCount(index, amount) {
+    const medication =
+        getMedication(index);
+
+    if (!medication) return;
 
     let count =
-        (med.doses || []).length + amount;
+        (medication.doses || []).length +
+        amount;
 
-    if (count < 1) count = 1;
-
-    if (count > 12) count = 12;
-
+    count =
+        Math.max(1, Math.min(12, count));
 
     const currentDoses =
-        med.doses || [];
+        medication.doses || [];
 
     const first =
         currentDoses.length
             ? currentDoses[0]
             : { h: 8, m: 0 };
 
-
     let gap =
-        Number(med.gap_min || 0);
+        Number(medication.gap_min || 30);
 
-    if (gap <= 0) {
-
-        gap = 30;
-    }
-
+    if (gap < 1) gap = 30;
 
     const firstMinutes =
         first.h * 60 + first.m;
 
-
-    const newDoses = [];
-
-
-    for (let i = 0; i < count; i++) {
-
-        newDoses.push(
-            minutesToDose(
-                firstMinutes + i * gap
-            )
+    medication.doses =
+        Array.from(
+            { length: count },
+            (_, doseIndex) =>
+                minutesToDose(
+                    firstMinutes +
+                    doseIndex * gap
+                )
         );
-    }
 
+    medication.dose_count =
+        count;
 
-    med.doses = newDoses;
-
-    med.dose_count = count;
-
-    med.gap_min = gap;
-
+    medication.gap_min =
+        gap;
 
     refreshMedicationUI();
 }
 
-
-/* =========================================================
-   GAP
-========================================================= */
-
 function changeGap(index) {
+    const medication =
+        getMedication(index);
 
-    const med =
-        lastConfig.data
-            .reminders
-            .medication
-            .medicines[index];
+    if (!medication) return;
 
     let gap =
         Number(
@@ -865,49 +965,38 @@ function changeGap(index) {
             ).value
         );
 
-    if (gap < 1) gap = 1;
+    gap =
+        Math.max(1, Math.min(1440, gap));
 
-    if (gap > 1440) gap = 1440;
-
-
-    med.gap_min = gap;
-
+    medication.gap_min =
+        gap;
 
     const first =
-        med.doses && med.doses.length
-            ? med.doses[0]
+        medication.doses &&
+        medication.doses.length
+            ? medication.doses[0]
             : { h: 8, m: 0 };
-
 
     const firstMinutes =
         first.h * 60 + first.m;
 
-
-    med.doses =
-        med.doses.map((dose, i) => {
-
-            return minutesToDose(
-                firstMinutes + i * gap
-            );
-
-        });
-
+    medication.doses =
+        (medication.doses || []).map(
+            (_, doseIndex) =>
+                minutesToDose(
+                    firstMinutes +
+                    doseIndex * gap
+                )
+        );
 
     refreshMedicationUI();
 }
 
-
-/* =========================================================
-   SNOOZE
-========================================================= */
-
 function changeSnooze(index) {
+    const medication =
+        getMedication(index);
 
-    const med =
-        lastConfig.data
-            .reminders
-            .medication
-            .medicines[index];
+    if (!medication) return;
 
     let snooze =
         Number(
@@ -916,104 +1005,75 @@ function changeSnooze(index) {
             ).value
         );
 
-    if (snooze < 0) snooze = 0;
+    snooze =
+        Math.max(0, Math.min(1440, snooze));
 
-    if (snooze > 1440) snooze = 1440;
+    medication.snooze_min =
+        snooze;
 
-
-    med.snooze_min = snooze;
-
-
-    lastConfig.data
-        .reminders
-        .medication
-        .snooze_min = snooze;
+    lastConfig.data.reminders.medication.snooze_min =
+        snooze;
 }
 
-
-/* =========================================================
-   FIRST DOSE
-========================================================= */
-
 function changeFirstDose(index) {
+    const medication =
+        getMedication(index);
 
-    const med =
-        lastConfig.data
-            .reminders
-            .medication
-            .medicines[index];
+    if (!medication) return;
 
     const value =
         document.getElementById(
             `firstDose-${index}`
         ).value;
 
+    if (!value) return;
+
     const firstMinutes =
         timeToMinutes(value);
 
-
     let gap =
-        Number(med.gap_min || 30);
-
+        Number(medication.gap_min || 30);
 
     if (gap < 1) gap = 30;
 
-
-    med.doses =
-        med.doses.map((dose, i) => {
-
-            return minutesToDose(
-                firstMinutes + i * gap
-            );
-
-        });
-
+    medication.doses =
+        (medication.doses || []).map(
+            (_, doseIndex) =>
+                minutesToDose(
+                    firstMinutes +
+                    doseIndex * gap
+                )
+        );
 
     refreshMedicationUI();
 }
 
-
-/* =========================================================
-   INDIVIDUAL DOSE
-========================================================= */
-
 function changeIndividualDose(
-    medIndex,
+    medicationIndex,
     doseIndex,
     value
 ) {
+    const medication =
+        getMedication(medicationIndex);
 
-    const med =
-        lastConfig.data
-            .reminders
-            .medication
-            .medicines[medIndex];
+    if (!medication || !value) return;
 
-    const [h, m] =
+    const parts =
         value.split(":").map(Number);
 
-
-    med.doses[doseIndex] = {
-        h,
-        m
+    medication.doses[doseIndex] = {
+        h: parts[0],
+        m: parts[1]
     };
-
 
     refreshMedicationUI();
 }
 
-
-/* =========================================================
-   DATE VALIDATION
-========================================================= */
-
 function changeStartDate(index) {
+    const medication =
+        getMedication(index);
 
-    const med =
-        lastConfig.data
-            .reminders
-            .medication
-            .medicines[index];
+    if (!medication) return;
 
     const start =
         document.getElementById(
@@ -1021,30 +1081,27 @@ function changeStartDate(index) {
         ).value;
 
     const end =
-        med.end;
-
+        medication.end;
 
     if (start && end && start > end) {
-
-        med.end = start;
+        medication.end =
+            start;
 
         document.getElementById(
             `endDate-${index}`
-        ).value = start;
+        ).value =
+            start;
     }
 
-
-    med.start = start;
+    medication.start =
+        start;
 }
 
-
 function changeEndDate(index) {
+    const medication =
+        getMedication(index);
 
-    const med =
-        lastConfig.data
-            .reminders
-            .medication
-            .medicines[index];
+    if (!medication) return;
 
     const end =
         document.getElementById(
@@ -1052,84 +1109,64 @@ function changeEndDate(index) {
         ).value;
 
     const start =
-        med.start;
-
+        medication.start;
 
     if (start && end && end < start) {
-
         alert(
             "End date cannot be before start date."
         );
 
         document.getElementById(
             `endDate-${index}`
-        ).value = start;
+        ).value =
+            start;
 
-        med.end = start;
+        medication.end =
+            start;
 
         return;
     }
 
-
-    med.end = end;
+    medication.end =
+        end;
 }
 
-
-/* =========================================================
-   REFRESH MEDICATION UI
-========================================================= */
-
 function refreshMedicationUI() {
-
     if (!lastConfig) return;
 
-
-    const medBlock =
+    const medicationBlock =
         lastConfig.data
             .reminders
             .medication;
-
 
     const container =
         document.getElementById(
             "currentMedicationControls"
         );
 
-
     if (!container) return;
 
-
     container.innerHTML =
-        medBlock.medicines
-            .map((med, index) =>
-                renderMedication(med, index)
+        medicationBlock.medicines
+            .map((medication, index) =>
+                renderMedication(
+                    medication,
+                    index
+                )
             )
             .join("");
 }
 
-
-/* =========================================================
-   SAVE MEDICATION
-========================================================= */
-
 function saveMedication(index) {
+    const medication =
+        getMedication(index);
 
-    const med =
-        lastConfig &&
-        lastConfig.data &&
-        lastConfig.data.reminders &&
-        lastConfig.data.reminders.medication &&
-        lastConfig.data.reminders.medication.medicines
-            ? lastConfig.data.reminders.medication.medicines[index]
-            : null;
-
-    if (!med) {
-
+    if (!medication) {
         addMessage(
             `
             <b>⚠️ Couldn't save.</b><br>
-            That medication entry no longer exists —
-            try sending your schedule again.
+            That medication entry no longer exists.
+            Try sending your schedule again.
             `,
             "bot invalid-warning"
         );
@@ -1137,79 +1174,66 @@ function saveMedication(index) {
         return;
     }
 
-
-    /*
-       Keep global medication snooze
-       synchronized with the medication.
-    */
-
     lastConfig.data
         .reminders
         .medication
         .snooze_min =
-            Number(med.snooze_min || 0);
-
-
-    /*
-       Close the editable table instead of
-       re-rendering it after save.
-    */
+        Number(medication.snooze_min || 0);
 
     const editor =
-        document.getElementById("scheduleEditor");
+        document.getElementById(
+            "scheduleEditor"
+        );
 
-    if (editor) editor.remove();
-
-
-    /*
-       Update the confirmation message in place
-       instead of appending a new one on every click.
-    */
-
-    let confirmDiv =
-        document.getElementById("medicationSavedMsg");
-
-    if (confirmDiv) {
-
-        confirmDiv.remove();
+    if (editor) {
+        editor.remove();
     }
 
-    confirmDiv =
+    const oldMessage =
+        document.getElementById(
+            "medicationSavedMsg"
+        );
+
+    if (oldMessage) {
+        oldMessage.remove();
+    }
+
+    const confirmation =
         document.createElement("div");
 
-    confirmDiv.className = "message bot";
-    confirmDiv.id = "medicationSavedMsg";
+    confirmation.className =
+        "message bot";
 
-    confirmDiv.innerHTML = `
+    confirmation.id =
+        "medicationSavedMsg";
+
+    confirmation.innerHTML =
+        `
         <b>💊 Medication updated</b><br>
-        ${escapeHtml(med.label)}<br>
-        Doses: ${med.doses.length}<br>
-        Snooze: ${med.snooze_min} minutes<br>
-        Gap: ${med.gap_min || 0} minutes
-    `;
+        ${escapeHtml(medication.label)}<br>
+        Doses: ${medication.doses.length}<br>
+        Snooze: ${medication.snooze_min} minutes<br>
+        Gap: ${medication.gap_min || 0} minutes
+        `;
 
     document
         .getElementById("chatMessages")
-        .appendChild(confirmDiv);
+        .appendChild(confirmation);
 
     scrollChatToBottom();
-
 
     downloadJSON();
 }
 
 
 /* =========================================================
-   FORMAT SCHEDULE
+   SCHEDULE DISPLAY
 ========================================================= */
 
 function formatCurrentSchedule() {
-
     if (!lastConfig) {
-
         return "<div>No schedule information found.</div>";
     }
-
 
     const data =
         lastConfig.data || {};
@@ -1219,43 +1243,36 @@ function formatCurrentSchedule() {
 
     let html = "";
 
-
-    /* ACTIVE HOURS */
-
     if (
         lastConfig.active_window &&
         lastConfig.active_window.start &&
         lastConfig.active_window.end
     ) {
-
         html += `
             <div class="section">
-
                 <div class="section-title">
                     ⏰ Active Hours
                 </div>
 
                 <div>
-                    ${formatTimeStr(lastConfig.active_window.start)}
+                    ${formatTimeStr(
+                        lastConfig.active_window.start
+                    )}
                     →
-                    ${formatTimeStr(lastConfig.active_window.end)}
+                    ${formatTimeStr(
+                        lastConfig.active_window.end
+                    )}
                 </div>
-
             </div>
         `;
     }
-
-
-    /* HYDRATION */
 
     if (
         reminders.hydration &&
         reminders.hydration.enabled
     ) {
-
         html += `
             <div class="section">
-
                 <div class="section-title">
                     💧 Hydration
                 </div>
@@ -1275,29 +1292,25 @@ function formatCurrentSchedule() {
 
                 ${
                     reminders.hydration.goal_ml
-                        ? `<div>
+                        ? `
+                        <div>
                             Daily Goal:
                             ${reminders.hydration.goal_ml}
                             mL
-                           </div>`
+                        </div>
+                        `
                         : ""
                 }
-
             </div>
         `;
     }
-
-
-    /* EYE */
 
     if (
         reminders.eye &&
         reminders.eye.enabled
     ) {
-
         html += `
             <div class="section">
-
                 <div class="section-title">
                     👁️ Eye Break
                 </div>
@@ -1314,22 +1327,16 @@ function formatCurrentSchedule() {
                         reminders.eye.days
                     )}
                 </div>
-
             </div>
         `;
     }
-
-
-    /* STRETCH */
 
     if (
         reminders.stretch &&
         reminders.stretch.enabled
     ) {
-
         html += `
             <div class="section">
-
                 <div class="section-title">
                     🧘 Stretch
                 </div>
@@ -1346,22 +1353,16 @@ function formatCurrentSchedule() {
                         reminders.stretch.days
                     )}
                 </div>
-
             </div>
         `;
     }
-
-
-    /* WALK */
 
     if (
         reminders.walk &&
         reminders.walk.enabled
     ) {
-
         html += `
             <div class="section">
-
                 <div class="section-title">
                     🚶 Walk
                 </div>
@@ -1378,22 +1379,16 @@ function formatCurrentSchedule() {
                         reminders.walk.days
                     )}
                 </div>
-
             </div>
         `;
     }
-
-
-    /* MEDITATION */
 
     if (
         reminders.meditation &&
         reminders.meditation.enabled
     ) {
-
         html += `
             <div class="section">
-
                 <div class="section-title">
                     🧘 Meditation
                 </div>
@@ -1416,119 +1411,88 @@ function formatCurrentSchedule() {
                         reminders.meditation.days
                     )}
                 </div>
-
             </div>
         `;
     }
 
-
-    /* POMODORO */
-
-    const pomo =
+    const pomodoro =
         data.pomodoro;
 
-
     if (
-        pomo &&
-        pomo.enabled
+        pomodoro &&
+        pomodoro.enabled
     ) {
-
         html += `
             <div class="section">
-
                 <div class="section-title">
                     🍅 Pomodoro
                 </div>
 
                 <div>
-                    Focus ${pomo.focus_min} min /
-                    Break ${pomo.break_min} min ×
-                    ${pomo.cycles} cycles
+                    Focus ${pomodoro.focus_min} min /
+                    Break ${pomodoro.break_min} min ×
+                    ${pomodoro.cycles} cycles
                 </div>
-
             </div>
         `;
     }
 
-
-    /* MEDICATION */
-
-    const medBlock =
+    const medicationBlock =
         reminders.medication;
 
-
     if (
-        medBlock &&
-        medBlock.enabled &&
-        medBlock.medicines &&
-        medBlock.medicines.length
+        medicationBlock &&
+        medicationBlock.enabled &&
+        medicationBlock.medicines &&
+        medicationBlock.medicines.length
     ) {
-
         html += `
             <div class="section">
-
                 <div class="section-title">
                     💊 Medication
                 </div>
 
                 <div>
                     Reminder snooze:
-                    ${medBlock.snooze_min || 0}
+                    ${medicationBlock.snooze_min || 0}
                     minutes
                 </div>
 
                 <div id="currentMedicationControls">
-        `;
-
-
-        medBlock.medicines.forEach(
-            (med, index) => {
-
-                html += renderMedication(
-                    med,
-                    index
-                );
-            }
-        );
-
-
-        html += `
+                    ${medicationBlock.medicines
+                        .map((medication, index) =>
+                            renderMedication(
+                                medication,
+                                index
+                            )
+                        )
+                        .join("")}
                 </div>
-
             </div>
         `;
     }
-
 
     return html ||
         "<div>No schedule information found for this message.</div>";
 }
 
-
-/* =========================================================
-   RENDER CURRENT SCHEDULE
-========================================================= */
-
 function renderCurrentSchedule() {
-
     const messages =
         document.getElementById(
             "chatMessages"
         );
-
 
     const old =
         document.getElementById(
             "scheduleEditor"
         );
 
-
-    if (old) old.remove();
-
+    if (old) {
+        old.remove();
+    }
 
     const div =
         document.createElement("div");
-
 
     div.className =
         "message bot";
@@ -1536,56 +1500,46 @@ function renderCurrentSchedule() {
     div.id =
         "scheduleEditor";
 
-
     div.innerHTML =
         formatCurrentSchedule();
 
-
     messages.appendChild(div);
-
 
     scrollChatToBottom();
 }
 
 
 /* =========================================================
-   TYPING
+   TYPING INDICATOR
 ========================================================= */
 
 function showTyping() {
-
     const div =
         document.createElement("div");
-
 
     div.className =
         "message bot typing-indicator";
 
-
     div.id =
         "typingIndicator";
-
 
     div.innerHTML =
         "<span></span><span></span><span></span>";
 
-
     document
         .getElementById("chatMessages")
         .appendChild(div);
+
+    scrollChatToBottom();
 }
 
-
 function hideTyping() {
-
     const typing =
         document.getElementById(
             "typingIndicator"
         );
 
-
     if (typing) {
-
         typing.remove();
     }
 }
@@ -1596,22 +1550,28 @@ function hideTyping() {
 ========================================================= */
 
 function setSendingState(sending) {
-
     const input =
         document.getElementById(
             "textInput"
         );
 
-    const button =
+    const sendButton =
         document.getElementById(
             "sendButton"
         );
 
+    const micButton =
+        document.getElementById(
+            "micButton"
+        );
 
     input.disabled =
         sending;
 
-    button.disabled =
+    sendButton.disabled =
+        sending;
+
+    micButton.disabled =
         sending;
 }
 
@@ -1621,9 +1581,7 @@ function setSendingState(sending) {
 ========================================================= */
 
 function downloadJSON() {
-
     if (!lastConfig) return;
-
 
     const blob =
         new Blob(
@@ -1639,29 +1597,22 @@ function downloadJSON() {
             }
         );
 
-
     const url =
         URL.createObjectURL(blob);
 
-
-    const a =
+    const link =
         document.createElement("a");
-
 
     const now =
         new Date();
 
-
-    a.download =
+    link.download =
         `schedule_${now.getHours()}-${now.getMinutes()}-${now.getSeconds()}.json`;
 
-
-    a.href =
+    link.href =
         url;
 
-
-    a.click();
-
+    link.click();
 
     URL.revokeObjectURL(url);
 }
@@ -1672,64 +1623,57 @@ function downloadJSON() {
 ========================================================= */
 
 async function sendText() {
+    if (isListening) {
+        stopVoiceInput();
+    }
 
     const input =
         document.getElementById(
             "textInput"
         );
 
-
     const text =
         input.value.trim();
 
-
     if (!text) return;
-
 
     addMessage(
         escapeHtml(text),
         "user"
     );
 
-
-    input.value = "";
-
+    input.value =
+        "";
 
     setSendingState(true);
-
     showTyping();
 
-
     try {
-
-        const res =
+        const response =
             await fetch(
                 API_URL,
                 {
                     method: "POST",
-
                     headers: {
                         "Content-Type":
                             "application/json"
                     },
-
                     body:
                         JSON.stringify({
-                            text
+                            text: text
                         })
                 }
             );
 
-
         const result =
-            await res.json();
-
+            await response.json();
 
         hideTyping();
 
-
-        if (!res.ok || result.error) {
-
+        if (
+            !response.ok ||
+            result.error
+        ) {
             addMessage(
                 `
                 <b>Backend error:</b><br>
@@ -1748,33 +1692,24 @@ async function sendText() {
             return;
         }
 
-
         lastConfig =
             result;
 
-
         try {
-
             renderCurrentSchedule();
-
-            renderInvalid(
-                result.invalid
-            );
-
-            renderLogs(
-                result.logs
-            );
-
+            renderInvalid(result.invalid);
+            renderLogs(result.logs);
             downloadJSON();
-
-        } catch (renderErr) {
-
-            console.error(renderErr);
+        } catch (renderError) {
+            console.error(renderError);
 
             addMessage(
                 `
                 <b>⚠️ Couldn't display the schedule.</b><br>
-                ${escapeHtml(renderErr.message || String(renderErr))}
+                ${escapeHtml(
+                    renderError.message ||
+                    String(renderError)
+                )}
                 `,
                 "bot invalid-warning"
             );
@@ -1782,11 +1717,8 @@ async function sendText() {
             renderLogs(result.logs);
         }
 
-
-    } catch (err) {
-
+    } catch (error) {
         hideTyping();
-
 
         addMessage(
             `
@@ -1797,16 +1729,218 @@ async function sendText() {
             "bot"
         );
 
-
-        console.error(err);
-
+        console.error(error);
 
     } finally {
-
         setSendingState(false);
-
         input.focus();
     }
+}
+
+
+/* =========================================================
+   VOICE INPUT
+========================================================= */
+
+const SpeechRecognition =
+    window.SpeechRecognition ||
+    window.webkitSpeechRecognition;
+
+let recognition =
+    null;
+
+let isListening =
+    false;
+
+function setupVoiceRecognition() {
+    if (!SpeechRecognition) {
+        return false;
+    }
+
+    recognition =
+        new SpeechRecognition();
+
+    recognition.lang =
+        "en-IN";
+
+    recognition.continuous =
+        false;
+
+    recognition.interimResults =
+        true;
+
+    recognition.maxAlternatives =
+        1;
+
+    recognition.onstart = function() {
+    isListening = true;
+
+    const mic =
+        document.getElementById("micButton");
+
+    const input =
+        document.getElementById("textInput");
+
+    mic.classList.add("listening");
+
+    mic.textContent = "🎙️";
+
+    mic.title =
+        "Listening... Click to stop";
+
+    mic.setAttribute(
+        "aria-label",
+        "Stop listening"
+    );
+
+    input.placeholder =
+        "🎙️ Listening...";
+};
+
+    recognition.onresult =
+        function(event) {
+            let transcript =
+                "";
+
+            for (
+                let i = event.resultIndex;
+                i < event.results.length;
+                i++
+            ) {
+                transcript +=
+                    event.results[i][0]
+                        .transcript;
+            }
+
+            document.getElementById(
+                "textInput"
+            ).value =
+                transcript.trim();
+        };
+
+    recognition.onerror =
+        function(event) {
+            console.error(
+                "Speech recognition error:",
+                event.error
+            );
+
+            let message =
+                "Voice input could not be started.";
+
+            if (
+                event.error ===
+                "not-allowed"
+            ) {
+                message =
+                    "Microphone permission was denied. Please allow microphone access.";
+            } else if (
+                event.error ===
+                "no-speech"
+            ) {
+                message =
+                    "I didn't hear anything. Please try again.";
+            }
+
+            addMessage(
+                `
+                <b>🎙️ ${
+                    escapeHtml(message)
+                }</b>
+                `,
+                "bot"
+            );
+        };
+
+    recognition.onend =
+        function() {
+            resetVoiceButton();
+        };
+
+    return true;
+}
+
+function toggleVoiceInput() {
+    if (isListening) {
+        stopVoiceInput();
+        return;
+    }
+
+    if (!SpeechRecognition) {
+        addMessage(
+            `
+            <b>🎙️ Voice input is not supported by this browser.</b><br>
+            Try Google Chrome or Microsoft Edge.
+            `,
+            "bot"
+        );
+
+        return;
+    }
+
+    if (!recognition) {
+        setupVoiceRecognition();
+    }
+
+    try {
+        recognition.start();
+    } catch (error) {
+        if (
+            error.name !==
+            "InvalidStateError"
+        ) {
+            console.error(error);
+        }
+    }
+}
+
+function resetVoiceButton() {
+    isListening =
+        false;
+
+    const mic =
+        document.getElementById(
+            "micButton"
+        );
+
+    const input =
+        document.getElementById(
+            "textInput"
+        );
+
+    if (mic) {
+        mic.classList.remove(
+            "listening"
+        );
+
+        mic.textContent =
+            "🎙️";
+
+        mic.title =
+            "Voice input";
+
+        mic.setAttribute(
+            "aria-label",
+            "Voice input"
+        );
+    }
+
+    if (input) {
+        input.placeholder =
+            "Type your schedule...";
+    }
+}
+
+function stopVoiceInput() {
+    if (recognition) {
+        try {
+            recognition.stop();
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    resetVoiceButton();
 }
 
 
@@ -1819,15 +1953,13 @@ document
     .addEventListener(
         "keydown",
         function(event) {
-
             if (
-                event.key === "Enter"
+                event.key ===
+                "Enter"
             ) {
-
                 event.preventDefault();
 
                 if (!this.disabled) {
-
                     sendText();
                 }
             }
@@ -1836,11 +1968,11 @@ document
 
 
 /* =========================================================
-   START
+   START APPLICATION
 ========================================================= */
 
+setupVoiceRecognition();
 showWelcome();
-
 </script>
 
 </body>
