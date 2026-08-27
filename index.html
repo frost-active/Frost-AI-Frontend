@@ -1692,6 +1692,19 @@ async function sendText() {
             return;
         }
 
+        if (result.reply) {
+            addMessage(
+                escapeHtml(result.reply),
+                "bot"
+            );
+
+            renderLogs(
+                result.logs
+            );
+
+            return;
+        }
+
         lastConfig =
             result;
 
