@@ -56,6 +56,95 @@ body {
     color: white;
     font-weight: 600;
     font-size: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.history-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.85;
+    transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.history-btn:hover,
+.history-btn:focus-visible {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.history-btn svg {
+    width: 20px;
+    height: 20px;
+    stroke: white;
+}
+
+.history-modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+}
+
+.history-modal-overlay.open {
+    display: flex;
+}
+
+.history-modal {
+    background: white;
+    width: 90%;
+    max-width: 480px;
+    max-height: 80vh;
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.history-modal-header {
+    padding: 14px 16px;
+    background: #2563eb;
+    color: white;
+    font-weight: 600;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.history-modal-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    opacity: 0.85;
+}
+
+.history-modal-close:hover {
+    opacity: 1;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.history-modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    font-size: 14px;
+    color: #0f172a;
 }
 
 .chat-messages {
@@ -416,7 +505,21 @@ body {
     <div class="chat-container">
 
         <div class="chat-header">
-            🧠 Frost Assistant
+            <span>🧠 Frost Assistant</span>
+            <button
+                type="button"
+                id="historyBtn"
+                class="history-btn"
+                onclick="toggleHistoryModal()"
+                aria-label="Reminder history"
+                title="Reminder history"
+            >
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 1 0 3-6.7" />
+                    <polyline points="3 4 3 9 8 9" />
+                    <polyline points="12 7 12 12 16 14" />
+                </svg>
+            </button>
         </div>
 
         <div class="chat-messages" id="chatMessages"></div>
@@ -472,6 +575,16 @@ body {
         <div id="logPanel"></div>
     </div>
 
+</div>
+
+<div class="history-modal-overlay" id="historyModalOverlay" onclick="if (event.target === this) closeHistoryModal();">
+    <div class="history-modal">
+        <div class="history-modal-header">
+            <span>Reminder History</span>
+            <button type="button" class="history-modal-close" onclick="closeHistoryModal()" aria-label="Close">&times;</button>
+        </div>
+        <div class="history-modal-body" id="historyModalBody"></div>
+    </div>
 </div>
 
 <script>
@@ -1279,11 +1392,16 @@ function formatCurrentSchedule() {
 
     let html = "";
 
-    if (
+    const isCustomActiveWindow =
         lastConfig.active_window &&
         lastConfig.active_window.start &&
-        lastConfig.active_window.end
-    ) {
+        lastConfig.active_window.end &&
+        !(
+            lastConfig.active_window.start === "00:00" &&
+            lastConfig.active_window.end === "23:59"
+        );
+
+    if (isCustomActiveWindow) {
         html += `
             <div class="section">
                 <div class="section-title">
@@ -1550,6 +1668,38 @@ function formatCurrentSchedule() {
     return html ||
         "<div>No schedule information found for this message.</div>";
 }
+
+
+/* =========================================================
+   HISTORY MODAL
+========================================================= */
+
+function toggleHistoryModal() {
+    const overlay =
+        document.getElementById("historyModalOverlay");
+
+    if (overlay.classList.contains("open")) {
+        closeHistoryModal();
+        return;
+    }
+
+    document.getElementById("historyModalBody").innerHTML =
+        formatCurrentSchedule();
+
+    overlay.classList.add("open");
+}
+
+function closeHistoryModal() {
+    document
+        .getElementById("historyModalOverlay")
+        .classList.remove("open");
+}
+
+document.addEventListener("keydown", function (event) {
+    if (event.key === "Escape") {
+        closeHistoryModal();
+    }
+});
 
 function renderCurrentSchedule() {
     const messages =
