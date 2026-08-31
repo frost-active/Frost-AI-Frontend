@@ -208,6 +208,35 @@ body {
     border-top: 1px solid #bfdbfe;
 }
 
+.suggestion-chips {
+    display: flex;
+    gap: 8px;
+    padding: 10px 12px 0 12px;
+    background: #eff6ff;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.suggestion-chip {
+    flex: 0 0 auto;
+    padding: 6px 12px;
+    border-radius: 999px;
+    border: 1px solid #93c5fd;
+    background: white;
+    color: #1d4ed8;
+    font-size: 13px;
+    cursor: pointer;
+    transition: 0.2s ease;
+}
+
+.suggestion-chip:hover {
+    background: #dbeafe;
+}
+
+.suggestion-chip:active {
+    background: #bfdbfe;
+}
+
 .composer {
     flex: 1;
     min-width: 0;
@@ -391,6 +420,13 @@ body {
         </div>
 
         <div class="chat-messages" id="chatMessages"></div>
+
+        <div class="suggestion-chips" id="suggestionChips">
+            <button type="button" class="suggestion-chip" onclick="useSuggestion(`Add walk at 4pm`)">Add walk at 4pm</button>
+            <button type="button" class="suggestion-chip" onclick="useSuggestion(`Hydration every 3 hours`)">Hydration every 3 hours</button>
+            <button type="button" class="suggestion-chip" onclick="useSuggestion(`Turn off eye breaks`)">Turn off eye breaks</button>
+            <button type="button" class="suggestion-chip" onclick="useSuggestion(`What's at 3pm?`)">What's at 3pm?</button>
+        </div>
 
         <div class="chat-input">
 
@@ -1472,6 +1508,45 @@ function formatCurrentSchedule() {
         `;
     }
 
+    const customBlock =
+        reminders.custom;
+
+    if (
+        customBlock &&
+        customBlock.enabled &&
+        customBlock.events &&
+        customBlock.events.length
+    ) {
+        html += `
+            <div class="section">
+                <div class="section-title">
+                    🔔 Custom Reminders
+                </div>
+
+                ${customBlock.events
+                    .map(event => `
+                        <div style="margin-bottom:8px;">
+                            <b>${escapeHtml(
+                                event.label || "Reminder"
+                            )}</b><br>
+
+                            ${(event.times || [])
+                                .map(t => formatTimeStr(t))
+                                .join(", ")}
+                            <br>
+
+                            ${
+                                event.repeat
+                                    ? `Days: ${formatDays(event.days)}`
+                                    : `Date: ${escapeHtml(event.date || "")}`
+                            }
+                        </div>
+                    `)
+                    .join("")}
+            </div>
+        `;
+    }
+
     return html ||
         "<div>No schedule information found for this message.</div>";
 }
@@ -1619,6 +1694,179 @@ function downloadJSON() {
 
 
 /* =========================================================
+   SUGGESTION CHIPS
+========================================================= */
+
+function useSuggestion(text) {
+    const input =
+        document.getElementById(
+            "textInput"
+        );
+
+    input.value =
+        text;
+
+    input.focus();
+}
+
+
+/* =========================================================
+   "WHAT'S AT <TIME>" LOOKUP
+========================================================= */
+
+function parseQueryTime(text) {
+    const match =
+        text.match(
+            /(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/i
+        );
+
+    if (!match) return null;
+
+    let h =
+        parseInt(match[1], 10);
+
+    const m =
+        match[2] ? parseInt(match[2], 10) : 0;
+
+    const ampm =
+        match[3] ? match[3].toLowerCase() : null;
+
+    if (ampm === "pm" && h < 12) h += 12;
+    if (ampm === "am" && h === 12) h = 0;
+
+    if (h > 23 || m > 59) return null;
+
+    return { h, m };
+}
+
+function isTimeQuery(text) {
+    return (
+        /\bwhat\b/i.test(text) &&
+        /\b(at|on)\b/i.test(text) &&
+        /\d{1,2}(:\d{2})?\s*(am|pm)?/i.test(text)
+    );
+}
+
+function timeInWindow(h, m, sh, sm, eh, em) {
+    const target = h * 60 + m;
+    const start = sh * 60 + sm;
+    const end = eh * 60 + em;
+
+    if (start <= end) {
+        return target >= start && target <= end;
+    }
+
+    return target >= start || target <= end;
+}
+
+function tryAnswerTimeQuery(text) {
+    if (!isTimeQuery(text)) return null;
+
+    const time =
+        parseQueryTime(text);
+
+    if (!time) return null;
+
+    if (!lastConfig || !lastConfig.data) {
+        return "No task assigned at that time.";
+    }
+
+    const reminders =
+        lastConfig.data.reminders || {};
+
+    const found = [];
+
+    const WINDOW_TASKS = [
+        { key: "hydration", label: "💧 Hydration" },
+        { key: "eye", label: "👁️ Eye Break" },
+        { key: "stretch", label: "🧘 Stretch" },
+        { key: "walk", label: "🚶 Walk" }
+    ];
+
+    WINDOW_TASKS.forEach(({ key, label }) => {
+        const r = reminders[key];
+
+        if (!r || !r.enabled) return;
+
+        if (r.mode === "absolute" && r.abs && r.abs.times) {
+            const hit = r.abs.times.some(
+                t => t.h === time.h && t.m === time.m
+            );
+
+            if (hit) found.push(label);
+
+        } else if (
+            timeInWindow(
+                time.h, time.m,
+                r.start_hour, r.start_min,
+                r.end_hour, r.end_min
+            )
+        ) {
+            found.push(`${label} (active window)`);
+        }
+    });
+
+    const med =
+        reminders.meditation;
+
+    if (
+        med && med.enabled &&
+        timeInWindow(
+            time.h, time.m,
+            med.sh, med.sm,
+            med.eh, med.em
+        )
+    ) {
+        found.push("🧘 Meditation");
+    }
+
+    const medication =
+        reminders.medication;
+
+    if (
+        medication &&
+        medication.enabled &&
+        medication.medicines
+    ) {
+        medication.medicines.forEach(m => {
+            const hit = (m.doses || []).some(
+                d => d.h === time.h && d.m === time.m
+            );
+
+            if (hit) found.push(`💊 ${m.label}`);
+        });
+    }
+
+    const custom =
+        reminders.custom;
+
+    if (
+        custom &&
+        custom.enabled &&
+        custom.events
+    ) {
+        custom.events.forEach(ev => {
+            const hit = (ev.times || []).some(t => {
+                const [th, tm] = t.split(":").map(Number);
+                return th === time.h && tm === time.m;
+            });
+
+            if (hit) found.push(`🔔 ${ev.label}`);
+        });
+    }
+
+    if (!found.length) {
+        return "No task assigned at that time.";
+    }
+
+    return (
+        `At ${formatDisplayTime(time.h, time.m)} `
+        + `you have: ${found.join(", ")}.`
+    );
+}
+
+
+/* =========================================================
    SEND TO BACKEND
 ========================================================= */
 
@@ -1644,6 +1892,18 @@ async function sendText() {
 
     input.value =
         "";
+
+    const timeAnswer =
+        tryAnswerTimeQuery(text);
+
+    if (timeAnswer !== null) {
+        addMessage(
+            escapeHtml(timeAnswer),
+            "bot"
+        );
+
+        return;
+    }
 
     setSendingState(true);
     showTyping();
