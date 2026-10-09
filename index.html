@@ -602,6 +602,7 @@ const API_URL =
         : PRODUCTION_API_URL;
 
 let lastConfig = null;
+let pendingRequest = null;   // set when the bot asked a question
 
 
 /* =========================================================
@@ -679,6 +680,22 @@ function renderInvalid(invalid) {
 
 
 /* =========================================================
+   SUMMARY + NOTES
+========================================================= */
+
+function renderSummary(summary, notes) {
+    const lines = [];
+
+    (summary || []).forEach(s => lines.push(`✅ ${escapeHtml(s)}`));
+    (notes || []).forEach(n => lines.push(`ℹ️ ${escapeHtml(n)}`));
+
+    if (!lines.length) return;
+
+    addMessage(lines.join("<br>"), "bot");
+}
+
+
+/* =========================================================
    LOGS
 ========================================================= */
 
@@ -713,11 +730,11 @@ function showWelcome() {
         <br>
         • "pomodoro 25/5 for 4 cycles from 9am to 12pm"
         <br>
-        • "take medicine at 8am daily"
-        <br>
-        • "take medicine at 8am mon and wed 2 doses per day"
-        <br>
         • "take medicine at 8am mon and wed 2 doses per day 30 mins reminder period"
+        <br>
+        • "Create a new habit called Reading at 7pm every day for 30 days."
+        <br>
+        • "Morning Exercise at 6:30am every day for 21 days, except Sunday."
         `,
         "bot"
     );
@@ -751,23 +768,42 @@ function formatDisplayTime(hour, minute) {
     return `${displayHour}:${pad2(minute)} ${suffix}`;
 }
 
+function toHM(t) {
+    if (t === null || t === undefined) return null;
+    if (typeof t === "object") {
+        return { h: Number(t.h), m: Number(t.m) };
+    }
+    const p = String(t).split(":").map(Number);
+    return { h: p[0], m: p[1] || 0 };
+}
+
 function formatTimeStr(time) {
-    if (!time) return time;
+    const t = toHM(time);
+    if (!t || isNaN(t.h) || isNaN(t.m)) return "";
+    return formatDisplayTime(t.h, t.m);
+}
 
-    const parts =
-        time.split(":").map(Number);
+function formatTimesList(times) {
+    return (times || []).map(formatTimeStr).join(", ");
+}
 
-    return formatDisplayTime(
-        parts[0],
-        parts[1]
+function formatDate(iso) {
+    if (!iso) return "";
+    const p = String(iso).split("-").map(Number);
+    if (p.length !== 3 || p.some(isNaN)) return String(iso);
+    return new Date(p[0], p[1] - 1, p[2]).toLocaleDateString(
+        "en-GB", { day: "numeric", month: "short", year: "numeric" }
     );
 }
 
-function timeToMinutes(time) {
-    const parts =
-        time.split(":").map(Number);
+function formatDateRange(start, end) {
+    if (!start && !end) return "";
+    return `${formatDate(start)} → ${formatDate(end)}`;
+}
 
-    return parts[0] * 60 + parts[1];
+function timeToMinutes(time) {
+    const t = toHM(time);
+    return t.h * 60 + t.m;
 }
 
 function minutesToDose(minutes) {
@@ -793,51 +829,15 @@ function msToMinutes(milliseconds) {
 }
 
 function formatIntervalOrAbs(config) {
-    if (config.mode === "absolute") {
-        const times =
-            config.abs &&
-            Array.isArray(config.abs.times)
-                ? config.abs.times
-                : [];
+    const times =
+        config.abs && Array.isArray(config.abs.times)
+            ? config.abs.times
+            : [];
 
-        if (times.length) {
-            return `
-                At ${times
-                    .map(time =>
-                        formatDisplayTime(
-                            time.h,
-                            time.m
-                        )
-                    )
-                    .join(", ")}
-            `;
-        }
-
-        return "At scheduled time";
-    }
-
-    if (
-        config.mode === "interval" &&
-        config.interval_ms != null
-    ) {
-        return `
-            Every ${msToMinutes(config.interval_ms)}
-            minutes
-            (${formatDisplayTime(
-                config.start_hour,
-                config.start_min
-            )}
-            →
-            ${formatDisplayTime(
-                config.end_hour,
-                config.end_min
-            )})
-        `;
-    }
-
-    return "";
+    return times.length
+        ? `At ${formatTimesList(times)}`
+        : "No time set";
 }
-
 
 /* =========================================================
    DAYS
@@ -874,6 +874,15 @@ function renderMedication(medication, index) {
             ? hm(doses[0].h, doses[0].m)
             : "08:00";
 
+    const globalSnooze =
+        lastConfig &&
+        lastConfig.data &&
+        lastConfig.data.reminders &&
+        lastConfig.data.reminders.medication &&
+        lastConfig.data.reminders.medication.snooze_min != null
+            ? lastConfig.data.reminders.medication.snooze_min
+            : 15;
+
     return `
         <div class="medication-card">
 
@@ -882,127 +891,52 @@ function renderMedication(medication, index) {
             </div>
 
             <div class="control-row">
-                <span class="control-label">
-                    Doses per day
-                </span>
-
+                <span class="control-label">Doses per day</span>
                 <div class="stepper">
-
-                    <button
-                        type="button"
-                        onclick="changeDoseCount(${index}, -1)"
-                    >
-                        −
-                    </button>
-
-                    <span id="doseCount-${index}">
-                        ${doses.length}
-                    </span>
-
-                    <button
-                        type="button"
-                        onclick="changeDoseCount(${index}, 1)"
-                    >
-                        +
-                    </button>
-
+                    <button type="button" onclick="changeDoseCount(${index}, -1)">−</button>
+                    <span id="doseCount-${index}">${doses.length}</span>
+                    <button type="button" onclick="changeDoseCount(${index}, 1)">+</button>
                 </div>
             </div>
 
             <div class="control-row">
-                <span class="control-label">
-                    Minutes between doses
-                </span>
-
-                <input
-                    class="number-input"
-                    id="gap-${index}"
-                    type="number"
-                    min="1"
-                    max="1440"
-                    value="${medication.gap_min || 0}"
-                    onchange="changeGap(${index})"
-                >
-            </div>
-
-            <div class="control-row">
-                <span class="control-label">
-                    Snooze time
-                </span>
-
-                <input
-                    class="number-input"
-                    id="snooze-${index}"
-                    type="number"
-                    min="0"
-                    max="1440"
-                    value="${medication.snooze_min ?? 15}"
-                    onchange="changeSnooze(${index})"
-                >
-
+                <span class="control-label">Snooze time (all medicines)</span>
+                <input class="number-input" id="snooze-${index}" type="number"
+                    min="0" max="1440" value="${globalSnooze}"
+                    onchange="changeSnooze(${index})">
                 <span>min</span>
             </div>
 
             <div class="control-row">
-                <span class="control-label">
-                    First dose
-                </span>
-
-                <input
-                    class="time-input"
-                    id="firstDose-${index}"
-                    type="time"
-                    value="${firstDose}"
-                    onchange="changeFirstDose(${index})"
-                >
+                <span class="control-label">First dose</span>
+                <input class="time-input" id="firstDose-${index}" type="time"
+                    value="${firstDose}" onchange="changeFirstDose(${index})">
             </div>
 
             <div class="control-row">
-                <span class="control-label">
-                    Start date
-                </span>
-
-                <input
-                    class="date-input"
-                    id="startDate-${index}"
-                    type="date"
-                    value="${medication.start || ""}"
-                    onchange="changeStartDate(${index})"
-                >
+                <span class="control-label">Start date</span>
+                <input class="date-input" id="startDate-${index}" type="date"
+                    value="${medication.start || ""}" onchange="changeStartDate(${index})">
             </div>
 
             <div class="control-row">
-                <span class="control-label">
-                    End date
-                </span>
-
-                <input
-                    class="date-input"
-                    id="endDate-${index}"
-                    type="date"
-                    value="${medication.end || ""}"
-                    onchange="changeEndDate(${index})"
-                >
+                <span class="control-label">End date</span>
+                <input class="date-input" id="endDate-${index}" type="date"
+                    value="${medication.end || ""}" onchange="changeEndDate(${index})">
             </div>
 
             <div class="dose-list">
                 <b>Dose times</b>
-
                 <div id="doseList-${index}">
                     ${renderDoseTimes(medication, index)}
                 </div>
             </div>
 
             <div style="margin-top: 8px;">
-                <b>Days:</b>
-                ${formatDays(medication.days)}
+                <b>Days:</b> ${formatDays(medication.days)}
             </div>
 
-            <button
-                class="save-btn"
-                type="button"
-                onclick="saveMedication(${index})"
-            >
+            <button class="save-btn" type="button" onclick="saveMedication(${index})">
                 Save Medication
             </button>
 
@@ -1054,144 +988,62 @@ function getMedication(index) {
 }
 
 function changeDoseCount(index, amount) {
-    const medication =
-        getMedication(index);
-
+    const medication = getMedication(index);
     if (!medication) return;
 
-    let count =
-        (medication.doses || []).length +
-        amount;
+    const current = medication.doses || [];
 
-    count =
-        Math.max(1, Math.min(12, count));
+    const count =
+        Math.max(1, Math.min(12, current.length + amount));
 
-    const currentDoses =
-        medication.doses || [];
+    if (count < current.length) {
+        medication.doses = current.slice(0, count);
+    } else {
+        const doses = current.slice();
+        let last =
+            doses.length
+                ? doses[doses.length - 1].h * 60 + doses[doses.length - 1].m
+                : 8 * 60 - 30;
 
-    const first =
-        currentDoses.length
-            ? currentDoses[0]
-            : { h: 8, m: 0 };
-
-    let gap =
-        Number(medication.gap_min || 30);
-
-    if (gap < 1) gap = 30;
-
-    const firstMinutes =
-        first.h * 60 + first.m;
-
-    medication.doses =
-        Array.from(
-            { length: count },
-            (_, doseIndex) =>
-                minutesToDose(
-                    firstMinutes +
-                    doseIndex * gap
-                )
-        );
-
-    medication.dose_count =
-        count;
-
-    medication.gap_min =
-        gap;
+        while (doses.length < count) {
+            last += 30;                       // new dose 30 min after the previous
+            doses.push(minutesToDose(last));
+        }
+        medication.doses = doses;
+    }
 
     refreshMedicationUI();
 }
 
-function changeGap(index) {
-    const medication =
-        getMedication(index);
 
-    if (!medication) return;
-
-    let gap =
-        Number(
-            document.getElementById(
-                `gap-${index}`
-            ).value
-        );
-
-    gap =
-        Math.max(1, Math.min(1440, gap));
-
-    medication.gap_min =
-        gap;
-
-    const first =
-        medication.doses &&
-        medication.doses.length
-            ? medication.doses[0]
-            : { h: 8, m: 0 };
-
-    const firstMinutes =
-        first.h * 60 + first.m;
-
-    medication.doses =
-        (medication.doses || []).map(
-            (_, doseIndex) =>
-                minutesToDose(
-                    firstMinutes +
-                    doseIndex * gap
-                )
-        );
-
-    refreshMedicationUI();
-}
 
 function changeSnooze(index) {
-    const medication =
-        getMedication(index);
-
-    if (!medication) return;
-
     let snooze =
-        Number(
-            document.getElementById(
-                `snooze-${index}`
-            ).value
-        );
+        Number(document.getElementById(`snooze-${index}`).value);
 
-    snooze =
-        Math.max(0, Math.min(1440, snooze));
+    snooze = Math.max(0, Math.min(1440, snooze || 0));
 
-    medication.snooze_min =
-        snooze;
-
-    lastConfig.data.reminders.medication.snooze_min =
-        snooze;
+    lastConfig.data.reminders.medication.snooze_min = snooze;
 }
 
 function changeFirstDose(index) {
-    const medication =
-        getMedication(index);
-
+    const medication = getMedication(index);
     if (!medication) return;
 
     const value =
-        document.getElementById(
-            `firstDose-${index}`
-        ).value;
+        document.getElementById(`firstDose-${index}`).value;
 
-    if (!value) return;
+    if (!value || !(medication.doses || []).length) return;
 
-    const firstMinutes =
-        timeToMinutes(value);
+    const oldFirst =
+        medication.doses[0].h * 60 + medication.doses[0].m;
 
-    let gap =
-        Number(medication.gap_min || 30);
+    const delta = timeToMinutes(value) - oldFirst;
 
-    if (gap < 1) gap = 30;
-
+    // shift every dose by the same amount (keeps spacing between doses)
     medication.doses =
-        (medication.doses || []).map(
-            (_, doseIndex) =>
-                minutesToDose(
-                    firstMinutes +
-                    doseIndex * gap
-                )
+        medication.doses.map(d =>
+            minutesToDose(d.h * 60 + d.m + delta)
         );
 
     refreshMedicationUI();
@@ -1307,368 +1159,186 @@ function refreshMedicationUI() {
 }
 
 function saveMedication(index) {
-    const medication =
-        getMedication(index);
+    const medication = getMedication(index);
 
     if (!medication) {
         addMessage(
-            `
-            <b>⚠️ Couldn't save.</b><br>
-            That medication entry no longer exists.
-            Try sending your schedule again.
-            `,
+            `<b>⚠️ Couldn't save.</b><br>
+             That medication entry no longer exists.
+             Try sending your schedule again.`,
             "bot invalid-warning"
         );
-
         return;
     }
 
-    lastConfig.data
-        .reminders
-        .medication
-        .snooze_min =
-        Number(medication.snooze_min || 0);
+    const editor = document.getElementById("scheduleEditor");
+    if (editor) editor.remove();
 
-    const editor =
-        document.getElementById(
-            "scheduleEditor"
-        );
+    const oldMessage = document.getElementById("medicationSavedMsg");
+    if (oldMessage) oldMessage.remove();
 
-    if (editor) {
-        editor.remove();
-    }
+    const snooze =
+        lastConfig.data.reminders.medication.snooze_min || 0;
 
-    const oldMessage =
-        document.getElementById(
-            "medicationSavedMsg"
-        );
+    const confirmation = document.createElement("div");
+    confirmation.className = "message bot";
+    confirmation.id = "medicationSavedMsg";
 
-    if (oldMessage) {
-        oldMessage.remove();
-    }
-
-    const confirmation =
-        document.createElement("div");
-
-    confirmation.className =
-        "message bot";
-
-    confirmation.id =
-        "medicationSavedMsg";
-
-    confirmation.innerHTML =
-        `
+    confirmation.innerHTML = `
         <b>💊 Medication updated</b><br>
         ${escapeHtml(medication.label)}<br>
-        Doses: ${medication.doses.length}<br>
-        Snooze: ${medication.snooze_min} minutes<br>
-        Gap: ${medication.gap_min || 0} minutes
-        `;
+        Doses: ${medication.doses.length}
+        (${escapeHtml(formatTimesList(medication.doses))})<br>
+        Dates: ${escapeHtml(formatDateRange(medication.start, medication.end))}<br>
+        Snooze: ${snooze} minutes
+    `;
 
-    document
-        .getElementById("chatMessages")
-        .appendChild(confirmation);
-
+    document.getElementById("chatMessages").appendChild(confirmation);
     scrollChatToBottom();
 
     downloadJSON();
 }
 
-
 /* =========================================================
    SCHEDULE DISPLAY
 ========================================================= */
+
+function scheduleBlock(title, lines) {
+    return `
+        <div class="section">
+            <div class="section-title">${title}</div>
+            ${lines.filter(Boolean).map(l => `<div>${l}</div>`).join("")}
+        </div>
+    `;
+}
 
 function formatCurrentSchedule() {
     if (!lastConfig) {
         return "<div>No schedule information found.</div>";
     }
 
-    const data =
-        lastConfig.data || {};
-
-    const reminders =
-        data.reminders || {};
-
+    const data = lastConfig.data || {};
+    const reminders = data.reminders || {};
     let html = "";
 
-    const isCustomActiveWindow =
-        lastConfig.active_window &&
-        lastConfig.active_window.start &&
-        lastConfig.active_window.end &&
-        !(
-            lastConfig.active_window.start === "00:00" &&
-            lastConfig.active_window.end === "23:59"
-        );
-
-    if (isCustomActiveWindow) {
-        html += `
-            <div class="section">
-                <div class="section-title">
-                    ⏰ Active Hours
-                </div>
-
-                <div>
-                    ${formatTimeStr(
-                        lastConfig.active_window.start
-                    )}
-                    →
-                    ${formatTimeStr(
-                        lastConfig.active_window.end
-                    )}
-                </div>
-            </div>
-        `;
+    const aw = lastConfig.active_window;
+    if (
+        aw && aw.start && aw.end &&
+        !(aw.start === "00:00" && aw.end === "23:59")
+    ) {
+        html += scheduleBlock("⏰ Active Hours", [
+            `${formatTimeStr(aw.start)} → ${formatTimeStr(aw.end)}`
+        ]);
     }
 
+    // hydration / eye / stretch / walk
+    [
+        ["hydration", "💧 Hydration"],
+        ["eye", "👁️ Eye Break"],
+        ["stretch", "🧘 Stretch"],
+        ["walk", "🚶 Walk"]
+    ].forEach(([key, title]) => {
+        const r = reminders[key];
+        if (!r || !r.enabled) return;
+
+        html += scheduleBlock(title, [
+            formatIntervalOrAbs(r),
+            `Dates: ${escapeHtml(formatDateRange(r.start_date, r.end_date))}`,
+            `Days: ${formatDays(r.days)}`
+        ]);
+    });
+
+    // bottle clean
+    const bottle = reminders.bottle_clean;
+    if (bottle && bottle.enabled) {
+        const every =
+            Number(bottle.interval_days) > 1
+                ? `Every ${bottle.interval_days} days`
+                : "Every day";
+
+        html += scheduleBlock("🧴 Bottle Clean", [
+            `${every} at ${formatTimeStr(bottle.time)}`,
+            `Dates: ${escapeHtml(formatDateRange(bottle.start_date, bottle.end_date))}`
+        ]);
+    }
+
+    // meditation
+    const med = reminders.meditation;
+    if (med && med.enabled) {
+        const slots =
+            (med.times || [])
+                .map(t => `${formatTimeStr(t.start)} → ${formatTimeStr(t.end)}`)
+                .join(", ");
+
+        html += scheduleBlock("🧘 Meditation", [
+            slots,
+            `Dates: ${escapeHtml(formatDateRange(med.start_date || (med.dates && med.dates.start), med.end_date || (med.dates && med.dates.end)))}`,
+            `Days: ${formatDays(med.days)}`
+        ]);
+    }
+
+    // pomodoro
+    const pomodoro = data.pomodoro;
+    if (pomodoro && pomodoro.enabled) {
+        const laps =
+            (pomodoro.laps || [])
+                .map(l =>
+                    `${formatTimeStr(l.start)} (${l.cycles} cycle${Number(l.cycles) === 1 ? "" : "s"})`
+                )
+                .join(", ");
+
+        html += scheduleBlock("🍅 Pomodoro", [
+            `Focus ${pomodoro.focus_min} min / Break ${pomodoro.break_min} min`,
+            laps ? `Starts: ${laps}` : "",
+            `Dates: ${escapeHtml(formatDateRange(pomodoro.start_date, pomodoro.end_date))}`,
+            `Days: ${formatDays(pomodoro.days)}`
+        ]);
+    }
+
+    // medication (editable cards)
+    const medicationBlock = reminders.medication;
     if (
-        reminders.hydration &&
-        reminders.hydration.enabled
+        medicationBlock && medicationBlock.enabled &&
+        medicationBlock.medicines && medicationBlock.medicines.length
     ) {
         html += `
             <div class="section">
-                <div class="section-title">
-                    💧 Hydration
-                </div>
-
-                <div>
-                    ${formatIntervalOrAbs(
-                        reminders.hydration
-                    )}
-                </div>
-
-                <div>
-                    Days:
-                    ${formatDays(
-                        reminders.hydration.days
-                    )}
-                </div>
-
-                ${
-                    reminders.hydration.goal_ml
-                        ? `
-                        <div>
-                            Daily Goal:
-                            ${reminders.hydration.goal_ml}
-                            mL
-                        </div>
-                        `
-                        : ""
-                }
-            </div>
-        `;
-    }
-
-    if (
-        reminders.eye &&
-        reminders.eye.enabled
-    ) {
-        html += `
-            <div class="section">
-                <div class="section-title">
-                    👁️ Eye Break
-                </div>
-
-                <div>
-                    ${formatIntervalOrAbs(
-                        reminders.eye
-                    )}
-                </div>
-
-                <div>
-                    Days:
-                    ${formatDays(
-                        reminders.eye.days
-                    )}
-                </div>
-            </div>
-        `;
-    }
-
-    if (
-        reminders.stretch &&
-        reminders.stretch.enabled
-    ) {
-        html += `
-            <div class="section">
-                <div class="section-title">
-                    🧘 Stretch
-                </div>
-
-                <div>
-                    ${formatIntervalOrAbs(
-                        reminders.stretch
-                    )}
-                </div>
-
-                <div>
-                    Days:
-                    ${formatDays(
-                        reminders.stretch.days
-                    )}
-                </div>
-            </div>
-        `;
-    }
-
-    if (
-        reminders.walk &&
-        reminders.walk.enabled
-    ) {
-        html += `
-            <div class="section">
-                <div class="section-title">
-                    🚶 Walk
-                </div>
-
-                <div>
-                    ${formatIntervalOrAbs(
-                        reminders.walk
-                    )}
-                </div>
-
-                <div>
-                    Days:
-                    ${formatDays(
-                        reminders.walk.days
-                    )}
-                </div>
-            </div>
-        `;
-    }
-
-    if (
-        reminders.meditation &&
-        reminders.meditation.enabled
-    ) {
-        html += `
-            <div class="section">
-                <div class="section-title">
-                    🧘 Meditation
-                </div>
-
-                <div>
-                    ${formatDisplayTime(
-                        reminders.meditation.sh,
-                        reminders.meditation.sm
-                    )}
-                    →
-                    ${formatDisplayTime(
-                        reminders.meditation.eh,
-                        reminders.meditation.em
-                    )}
-                </div>
-
-                <div>
-                    Days:
-                    ${formatDays(
-                        reminders.meditation.days
-                    )}
-                </div>
-            </div>
-        `;
-    }
-
-    const pomodoro =
-        data.pomodoro;
-
-    if (
-        pomodoro &&
-        pomodoro.enabled
-    ) {
-        html += `
-            <div class="section">
-                <div class="section-title">
-                    🍅 Pomodoro
-                </div>
-
-                <div>
-                    Focus ${pomodoro.focus_min} min /
-                    Break ${pomodoro.break_min} min ×
-                    ${pomodoro.cycles} cycles
-                </div>
-            </div>
-        `;
-    }
-
-    const medicationBlock =
-        reminders.medication;
-
-    if (
-        medicationBlock &&
-        medicationBlock.enabled &&
-        medicationBlock.medicines &&
-        medicationBlock.medicines.length
-    ) {
-        html += `
-            <div class="section">
-                <div class="section-title">
-                    💊 Medication
-                </div>
-
-                <div>
-                    Reminder snooze:
-                    ${medicationBlock.snooze_min || 0}
-                    minutes
-                </div>
-
+                <div class="section-title">💊 Medication</div>
                 <div id="currentMedicationControls">
                     ${medicationBlock.medicines
-                        .map((medication, index) =>
-                            renderMedication(
-                                medication,
-                                index
-                            )
-                        )
+                        .map((m, i) => renderMedication(m, i))
                         .join("")}
                 </div>
             </div>
         `;
     }
 
-    const customBlock =
-        reminders.custom;
+    // habits (custom events)
+    const customBlock = reminders.custom;
+    if (customBlock && customBlock.enabled) {
+        const events =
+            (customBlock.events || []).filter(ev => ev.enabled !== false);
 
-    if (
-        customBlock &&
-        customBlock.enabled &&
-        customBlock.events &&
-        customBlock.events.length
-    ) {
-        html += `
-            <div class="section">
-                <div class="section-title">
-                    🔔 Custom Reminders
-                </div>
-
-                ${customBlock.events
-                    .map(event => `
+        if (events.length) {
+            html += `
+                <div class="section">
+                    <div class="section-title">🔔 Habits</div>
+                    ${events.map(ev => `
                         <div style="margin-bottom:8px;">
-                            <b>${escapeHtml(
-                                event.label || "Reminder"
-                            )}</b><br>
-
-                            ${(event.times || [])
-                                .map(t => formatTimeStr(t))
-                                .join(", ")}
-                            <br>
-
-                            ${
-                                event.repeat
-                                    ? `Days: ${formatDays(event.days)}`
-                                    : `Date: ${escapeHtml(event.date || "")}`
-                            }
+                            <b>${escapeHtml((ev.label || "Habit").trim())}</b><br>
+                            ${escapeHtml(formatTimesList(ev.times))}<br>
+                            Dates: ${escapeHtml(formatDateRange(ev.start_date, ev.end_date))}<br>
+                            Days: ${formatDays(ev.days)}
                         </div>
-                    `)
-                    .join("")}
-            </div>
-        `;
+                    `).join("")}
+                </div>
+            `;
+        }
     }
 
     return html ||
         "<div>No schedule information found for this message.</div>";
 }
-
 
 /* =========================================================
    HISTORY MODAL
@@ -1812,7 +1482,7 @@ function downloadJSON() {
         new Blob(
             [
                 JSON.stringify(
-                    lastConfig,
+                    lastConfig.data || lastConfig,
                     null,
                     2
                 )
@@ -1912,96 +1582,72 @@ function timeInWindow(h, m, sh, sm, eh, em) {
 function tryAnswerTimeQuery(text) {
     if (!isTimeQuery(text)) return null;
 
-    const time =
-        parseQueryTime(text);
-
+    const time = parseQueryTime(text);
     if (!time) return null;
 
     if (!lastConfig || !lastConfig.data) {
         return "No task assigned at that time.";
     }
 
-    const reminders =
-        lastConfig.data.reminders || {};
-
+    const data = lastConfig.data;
+    const reminders = data.reminders || {};
     const found = [];
 
-    const WINDOW_TASKS = [
-        { key: "hydration", label: "💧 Hydration" },
-        { key: "eye", label: "👁️ Eye Break" },
-        { key: "stretch", label: "🧘 Stretch" },
-        { key: "walk", label: "🚶 Walk" }
-    ];
+    const same = t => {
+        const x = toHM(t);
+        return x && x.h === time.h && x.m === time.m;
+    };
 
-    WINDOW_TASKS.forEach(({ key, label }) => {
+    [
+        ["hydration", "💧 Hydration"],
+        ["eye", "👁️ Eye Break"],
+        ["stretch", "🧘 Stretch"],
+        ["walk", "🚶 Walk"]
+    ].forEach(([key, label]) => {
         const r = reminders[key];
-
         if (!r || !r.enabled) return;
-
-        if (r.mode === "absolute" && r.abs && r.abs.times) {
-            const hit = r.abs.times.some(
-                t => t.h === time.h && t.m === time.m
-            );
-
-            if (hit) found.push(label);
-
-        } else if (
-            timeInWindow(
-                time.h, time.m,
-                r.start_hour, r.start_min,
-                r.end_hour, r.end_min
-            )
-        ) {
-            found.push(`${label} (active window)`);
-        }
+        if (r.abs && (r.abs.times || []).some(same)) found.push(label);
     });
 
-    const med =
-        reminders.meditation;
-
-    if (
-        med && med.enabled &&
-        timeInWindow(
-            time.h, time.m,
-            med.sh, med.sm,
-            med.eh, med.em
-        )
-    ) {
-        found.push("🧘 Meditation");
+    const bottle = reminders.bottle_clean;
+    if (bottle && bottle.enabled && same(bottle.time)) {
+        found.push("🧴 Bottle Clean");
     }
 
-    const medication =
-        reminders.medication;
+    const med = reminders.meditation;
+    if (med && med.enabled) {
+        const hit = (med.times || []).some(s =>
+            timeInWindow(
+                time.h, time.m,
+                s.start.h, s.start.m,
+                s.end.h, s.end.m
+            )
+        );
+        if (hit) found.push("🧘 Meditation");
+    }
 
-    if (
-        medication &&
-        medication.enabled &&
-        medication.medicines
-    ) {
+    const pomodoro = data.pomodoro;
+    if (pomodoro && pomodoro.enabled) {
+        if ((pomodoro.laps || []).some(l => same(l.start))) {
+            found.push("🍅 Pomodoro");
+        }
+    }
+
+    const medication = reminders.medication;
+    if (medication && medication.enabled && medication.medicines) {
         medication.medicines.forEach(m => {
-            const hit = (m.doses || []).some(
-                d => d.h === time.h && d.m === time.m
-            );
-
-            if (hit) found.push(`💊 ${m.label}`);
+            if (m.enabled === false) return;
+            if ((m.doses || []).some(same)) found.push(`💊 ${m.label}`);
         });
     }
 
-    const custom =
-        reminders.custom;
-
-    if (
-        custom &&
-        custom.enabled &&
-        custom.events
-    ) {
+    const custom = reminders.custom;
+    if (custom && custom.enabled && custom.events) {
         custom.events.forEach(ev => {
-            const hit = (ev.times || []).some(t => {
-                const [th, tm] = t.split(":").map(Number);
-                return th === time.h && tm === time.m;
-            });
-
-            if (hit) found.push(`🔔 ${ev.label}`);
+            if (ev.enabled === false) return;
+            if ((ev.times || []).some(same)) {
+                found.push(`🔔 ${(ev.label || "Habit").trim()}`);
+            }
         });
     }
 
@@ -2014,7 +1660,6 @@ function tryAnswerTimeQuery(text) {
         + `you have: ${found.join(", ")}.`
     );
 }
-
 
 /* =========================================================
    SEND TO BACKEND
@@ -2070,7 +1715,12 @@ async function sendText() {
                     },
                     body:
                         JSON.stringify({
-                            text: text
+                            text: text,
+                            current_config:
+                                lastConfig && lastConfig.data
+                                    ? lastConfig.data
+                                    : undefined,
+                            pending: pendingRequest || undefined
                         })
                 }
             );
@@ -2103,8 +1753,14 @@ async function sendText() {
         }
 
         if (result.reply) {
+            // bot asked a question -> remember the request until answered
+            pendingRequest =
+                result.needs_input && result.pending
+                    ? result.pending
+                    : null;
+
             addMessage(
-                escapeHtml(result.reply),
+                escapeHtml(result.reply).replaceAll("\n", "<br>"),
                 "bot"
             );
 
@@ -2115,11 +1771,14 @@ async function sendText() {
             return;
         }
 
+        pendingRequest = null;
+
         lastConfig =
             result;
 
         try {
             renderCurrentSchedule();
+            renderSummary(result.summary, result.notes);
             renderInvalid(result.invalid);
             renderLogs(result.logs);
             downloadJSON();
