@@ -796,6 +796,33 @@ function formatDate(iso) {
     );
 }
 
+/* An open-ended reminder is stored with an end date about a year away;
+   show it as "Daily" instead of a date range. */
+function isOpenEnded(start, end) {
+    if (!start || !end) return false;
+    const a = new Date(start), b = new Date(end);
+    return (b - a) / 86400000 >= 360;
+}
+
+function whenLines(r) {
+    const start = r.start_date, end = r.end_date;
+
+    if (isOpenEnded(start, end)) {
+        const all = !r.days || r.days.length === 0 || r.days.length === 7;
+        return [`Repeat: ${all ? "Daily" : formatDays(r.days)}`];
+    }
+
+    if (start && start === end) {
+        return [`Date: ${escapeHtml(formatDate(start))} (one time)`,
+                `Days: ${formatDays(r.days)}`];
+    }
+
+    return [
+        `Dates: ${escapeHtml(formatDateRange(start, end))}`,
+        `Days: ${formatDays(r.days)}`
+    ];
+}
+
 function formatDateRange(start, end) {
     if (!start && !end) return "";
     return `${formatDate(start)} → ${formatDate(end)}`;
@@ -1241,10 +1268,15 @@ function formatCurrentSchedule() {
         const r = reminders[key];
         if (!r || !r.enabled) return;
 
+        const goal =
+            key === "hydration" && lastConfig.extras
+                ? lastConfig.extras.hydration_goal
+                : "";
+
         html += scheduleBlock(title, [
             formatIntervalOrAbs(r),
-            `Dates: ${escapeHtml(formatDateRange(r.start_date, r.end_date))}`,
-            `Days: ${formatDays(r.days)}`
+            goal ? `🎯 ${escapeHtml(goal)}` : "",
+            ...whenLines(r)
         ]);
     });
 
@@ -1256,9 +1288,13 @@ function formatCurrentSchedule() {
                 ? `Every ${bottle.interval_days} days`
                 : "Every day";
 
+        const open = isOpenEnded(bottle.start_date, bottle.end_date);
+
         html += scheduleBlock("🧴 Bottle Clean", [
             `${every} at ${formatTimeStr(bottle.time)}`,
-            `Dates: ${escapeHtml(formatDateRange(bottle.start_date, bottle.end_date))}`
+            open
+                ? (every === "Every day" ? "Repeat: Daily" : "")
+                : `Dates: ${escapeHtml(formatDateRange(bottle.start_date, bottle.end_date))}`
         ]);
     }
 
@@ -1272,8 +1308,7 @@ function formatCurrentSchedule() {
 
         html += scheduleBlock("🧘 Meditation", [
             slots,
-            `Dates: ${escapeHtml(formatDateRange(med.start_date || (med.dates && med.dates.start), med.end_date || (med.dates && med.dates.end)))}`,
-            `Days: ${formatDays(med.days)}`
+            ...whenLines(med)
         ]);
     }
 
@@ -1290,8 +1325,7 @@ function formatCurrentSchedule() {
         html += scheduleBlock("🍅 Pomodoro", [
             `Focus ${pomodoro.focus_min} min / Break ${pomodoro.break_min} min`,
             laps ? `Starts: ${laps}` : "",
-            `Dates: ${escapeHtml(formatDateRange(pomodoro.start_date, pomodoro.end_date))}`,
-            `Days: ${formatDays(pomodoro.days)}`
+            ...whenLines(pomodoro)
         ]);
     }
 
@@ -1327,8 +1361,7 @@ function formatCurrentSchedule() {
                         <div style="margin-bottom:8px;">
                             <b>${escapeHtml((ev.label || "Habit").trim())}</b><br>
                             ${escapeHtml(formatTimesList(ev.times))}<br>
-                            Dates: ${escapeHtml(formatDateRange(ev.start_date, ev.end_date))}<br>
-                            Days: ${formatDays(ev.days)}
+                            ${whenLines(ev).join("<br>")}
                         </div>
                     `).join("")}
                 </div>
@@ -1773,8 +1806,14 @@ async function sendText() {
 
         pendingRequest = null;
 
+        const previousExtras =
+            (lastConfig && lastConfig.extras) || {};
+
         lastConfig =
             result;
+
+        lastConfig.extras =
+            Object.assign({}, previousExtras, result.extras || {});
 
         try {
             renderCurrentSchedule();
