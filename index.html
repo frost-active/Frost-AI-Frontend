@@ -175,6 +175,98 @@ body {
     color: #0f172a;
 }
 
+/* Read aloud: speaker button sits just below the bubble, outside it */
+.message.has-actions {
+    position: relative;
+    margin-bottom: 32px;
+}
+
+.msg-actions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 2px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.read-aloud-btn {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: #475569;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.read-aloud-btn svg {
+    width: 11px;
+    height: 11px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.3;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.read-aloud-btn .icon-stop {
+    display: none;
+    fill: currentColor;
+}
+
+.read-aloud-btn:hover,
+.read-aloud-btn:focus-visible {
+    background: rgba(15, 23, 42, 0.1);
+    color: #0f172a;
+    outline: none;
+}
+
+.read-aloud-btn.speaking {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.read-aloud-btn.speaking .icon-speak {
+    display: none;
+}
+
+.read-aloud-btn.speaking .icon-stop {
+    display: block;
+}
+
+/* tooltip: "Read aloud" / "Stop" */
+.read-aloud-btn::after {
+    content: attr(data-tip);
+    position: absolute;
+    left: calc(100% + 6px);
+    top: 50%;
+    transform: translateY(-50%);
+    padding: 4px 9px;
+    border-radius: 7px;
+    background: #0f172a;
+    color: white;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.3;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s ease;
+    z-index: 5;
+}
+
+.read-aloud-btn:hover::after,
+.read-aloud-btn:focus-visible::after {
+    opacity: 1;
+}
+
 .invalid-warning {
     background: #fef2f2;
     border: 1px solid #fecaca;
@@ -324,6 +416,32 @@ body {
 
 .suggestion-chip:active {
     background: #bfdbfe;
+}
+
+/* "Sync to device": the same pill, one shade darker than the
+   other chips so it reads as the main action */
+.suggestion-chip.sync-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #1d4ed8;
+    border-color: #1e40af;
+    color: white;
+    font-weight: 600;
+}
+
+.suggestion-chip.sync-chip svg {
+    width: 14px;
+    height: 14px;
+    flex: 0 0 auto;
+}
+
+.suggestion-chip.sync-chip:hover {
+    background: #1e40af;
+}
+
+.suggestion-chip.sync-chip:active {
+    background: #1e3a8a;
 }
 
 .composer {
@@ -525,10 +643,14 @@ body {
         <div class="chat-messages" id="chatMessages"></div>
 
         <div class="suggestion-chips" id="suggestionChips">
-            <button type="button" class="suggestion-chip" onclick="useSuggestion(`Add walk at 4pm`)">Add walk at 4pm</button>
+            <button type="button" class="suggestion-chip sync-chip" onclick="syncToDevice()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 0 0-15.5-6.2L3 8"/><path d="M3 3v5h5"/><path d="M3 12a9 9 0 0 0 15.5 6.2L21 16"/><path d="M21 21v-5h-5"/></svg>
+                Sync to device
+            </button>
             <button type="button" class="suggestion-chip" onclick="useSuggestion(`Hydration every 3 hours`)">Hydration every 3 hours</button>
             <button type="button" class="suggestion-chip" onclick="useSuggestion(`Turn off eye breaks`)">Turn off eye breaks</button>
             <button type="button" class="suggestion-chip" onclick="useSuggestion(`What's at 3pm?`)">What's at 3pm?</button>
+            <button type="button" class="suggestion-chip" onclick="useSuggestion(`Add walk at 4pm`)">Add walk at 4pm</button>
         </div>
 
         <div class="chat-input">
@@ -633,12 +755,220 @@ function addMessage(content, cls) {
     div.innerHTML =
         content;
 
+    if (/\bbot\b/.test(cls) && !/typing/.test(cls)) {
+        attachReadAloud(div);
+    }
+
     document
         .getElementById("chatMessages")
         .appendChild(div);
 
     scrollChatToBottom();
 }
+
+
+/* =========================================================
+   READ ALOUD
+========================================================= */
+
+const TTS_OK =
+    "speechSynthesis" in window &&
+    "SpeechSynthesisUtterance" in window;
+
+const READ_ALOUD_ICONS = `
+    <svg class="icon-speak" viewBox="0 0 24 24" aria-hidden="true">
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+    </svg>
+    <svg class="icon-stop" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="6" y="6" width="12" height="12" rx="2"></rect>
+    </svg>
+`;
+
+let speakingButton = null;
+
+// the browser loads its voice list lazily
+if (TTS_OK) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () =>
+        window.speechSynthesis.getVoices();
+}
+
+// The message as it should sound: no buttons, emoji or symbols.
+function speechTextFrom(message) {
+    const clone = message.cloneNode(true);
+
+    clone
+        .querySelectorAll(
+            ".msg-actions, button, input, select, textarea, style, script"
+        )
+        .forEach(node => node.remove());
+
+    clone.querySelectorAll("br").forEach(br => br.replaceWith("\n"));
+
+    clone
+        .querySelectorAll("div, p, li")
+        .forEach(node => node.append("\n"));
+
+    return (clone.textContent || "")
+        .replace(/[\uFE0F\u200D]/g, "")
+        .replace(/\p{Extended_Pictographic}/gu, "")
+        .replace(/^[ \t]*[•·]\s*/gm, "")
+        .replace(/\s*→\s*/g, " to ")
+        .replace(/\s*[·…]\s*/g, ", ")
+        .split("\n")
+        .map(line => line.trim())
+        .filter(Boolean)
+        .map(line => /[.!?:;,]$/.test(line) ? line : line + ".")
+        .join(" ");
+}
+
+// Voices that are clearly male are never used
+const MALE_VOICE_RE =
+    /\b(male|david|mark|ravi|guy|ryan|george|james|richard|alex|daniel|fred|thomas|oliver|rishi|prabhat|hemant|christopher|eric|brian|roger|liam|jason|tony|sean)\b/i;
+
+const FEMALE_VOICE_RE =
+    /female|woman|aria|jenny|neerja|heera|zira|samantha|veena|karen|moira|tessa|sonia|libby|natasha|clara|emma|ava|susan|hazel|catherine|linda|victoria|fiona|allison|joanna|kendra|kimberly|salli|ivy|amy|google us english/i;
+
+// A clear, natural-sounding woman's voice, as close as the browser
+// allows: Edge's "Natural" voices (Neerja, Aria, Jenny) first, then
+// other female English voices, with an Indian-English one preferred.
+function voiceScore(voice) {
+    const name = voice.name || "";
+    const lang = voice.lang || "";
+
+    if (!/^en/i.test(lang)) return -1;
+    if (MALE_VOICE_RE.test(name)) return -1;
+
+    let score = 0;
+
+    if (/natural|neural|online/i.test(name)) score += 50;
+    if (FEMALE_VOICE_RE.test(name)) score += 40;
+    if (/^en[-_]IN/i.test(lang)) score += 30;
+    if (/neerja|aria|jenny|sonia|libby/i.test(name)) score += 20;
+    if (/google/i.test(name)) score += 8;
+
+    return score;
+}
+
+function pickVoice() {
+    const voices = window.speechSynthesis.getVoices() || [];
+
+    let best = null;
+    let bestScore = -1;
+
+    voices.forEach(voice => {
+        const score = voiceScore(voice);
+
+        if (score > bestScore) {
+            best = voice;
+            bestScore = score;
+        }
+    });
+
+    return best;
+}
+
+function setSpeakButton(button, speaking) {
+    if (!button) return;
+
+    button.classList.toggle("speaking", speaking);
+
+    const label = speaking ? "Stop" : "Read aloud";
+
+    button.dataset.tip = label;
+    button.setAttribute("aria-label", label);
+}
+
+function stopSpeaking() {
+    if (!TTS_OK) return;
+
+    window.speechSynthesis.cancel();
+
+    setSpeakButton(speakingButton, false);
+
+    speakingButton = null;
+}
+
+function toggleReadAloud(button) {
+    if (!TTS_OK) return;
+
+    // a second click on the same button stops it
+    if (button === speakingButton) {
+        stopSpeaking();
+        return;
+    }
+
+    const message = button.closest(".message");
+
+    const text = message ? speechTextFrom(message) : "";
+
+    if (!text) return;
+
+    const wasSpeaking =
+        window.speechSynthesis.speaking ||
+        window.speechSynthesis.pending;
+
+    stopSpeaking();
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    const voice = pickVoice();
+
+    if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+    } else {
+        utterance.lang = "en-IN";
+    }
+
+    const finished = () => {
+        if (speakingButton === button) speakingButton = null;
+        setSpeakButton(button, false);
+    };
+
+    // 1.1x speed, slightly brighter pitch
+    utterance.rate = 1.1;
+    utterance.pitch = 1.05;
+
+    utterance.onend = finished;
+    utterance.onerror = finished;
+
+    speakingButton = button;
+    setSpeakButton(button, true);
+
+    // some browsers drop speak() right after cancel()
+    setTimeout(
+        () => window.speechSynthesis.speak(utterance),
+        wasSpeaking ? 80 : 0
+    );
+}
+
+function attachReadAloud(message) {
+    if (!TTS_OK || message.querySelector(".msg-actions")) return;
+
+    const actions = document.createElement("div");
+
+    actions.className = "msg-actions";
+
+    const button = document.createElement("button");
+
+    button.type = "button";
+    button.className = "read-aloud-btn";
+    button.dataset.tip = "Read aloud";
+    button.setAttribute("aria-label", "Read aloud");
+    button.innerHTML = READ_ALOUD_ICONS;
+    button.addEventListener("click", () => toggleReadAloud(button));
+
+    actions.appendChild(button);
+    message.classList.add("has-actions");
+    message.appendChild(actions);
+}
+
+window.addEventListener("beforeunload", () => {
+    if (TTS_OK) window.speechSynthesis.cancel();
+});
 
 
 /* =========================================================
@@ -686,7 +1016,9 @@ function renderInvalid(invalid) {
 function renderSummary(summary, notes) {
     const lines = [];
 
-    (summary || []).forEach(s => lines.push(`✅ ${escapeHtml(s)}`));
+    // The backend already words each line as a full sentence
+    // ("Your habit 'Reading' has been successfully scheduled ...")
+    (summary || []).forEach(s => lines.push(escapeHtml(s)));
     (notes || []).forEach(n => lines.push(`ℹ️ ${escapeHtml(n)}`));
 
     if (!lines.length) return;
@@ -1220,6 +1552,8 @@ function saveMedication(index) {
         Snooze: ${snooze} minutes
     `;
 
+    attachReadAloud(confirmation);
+
     document.getElementById("chatMessages").appendChild(confirmation);
     scrollChatToBottom();
 
@@ -1431,6 +1765,8 @@ function renderCurrentSchedule() {
     div.innerHTML =
         formatCurrentSchedule();
 
+    attachReadAloud(div);
+
     messages.appendChild(div);
 
     scrollChatToBottom();
@@ -1543,6 +1879,31 @@ function downloadJSON() {
     link.click();
 
     URL.revokeObjectURL(url);
+}
+
+
+/* =========================================================
+   SYNC TO DEVICE
+========================================================= */
+
+// Saves the latest schedule as the JSON file the Frost device reads.
+function syncToDevice() {
+    if (!lastConfig || !lastConfig.data) {
+        addMessage(
+            "There's nothing to sync yet. Tell me a reminder first, " +
+            "for example \"drink water every 60 minutes from 9am to 6pm\".",
+            "bot"
+        );
+        return;
+    }
+
+    downloadJSON();
+
+    addMessage(
+        "Your latest schedule is ready. I've saved it as a JSON file " +
+        "in your downloads so you can sync it to your Frost device.",
+        "bot"
+    );
 }
 
 
@@ -1733,8 +2094,13 @@ async function sendText() {
         return;
     }
 
+    stopSpeaking();
+
     setSendingState(true);
     showTyping();
+
+    // true when this message answers a question the bot asked
+    const wasPending = !!pendingRequest;
 
     try {
         const response =
@@ -1785,7 +2151,7 @@ async function sendText() {
             return;
         }
 
-        if (result.reply) {
+        if (result.reply && !result.data) {
             // bot asked a question -> remember the request until answered
             pendingRequest =
                 result.needs_input && result.pending
@@ -1804,10 +2170,34 @@ async function sendText() {
             return;
         }
 
-        pendingRequest = null;
+        // Some items can be saved while another one still needs a
+        // time: the saved part is shown now and only the missing part
+        // is asked about, so the request stays open until it's answered.
+        const stillAsking = !!(result.needs_input && result.reply);
+
+        pendingRequest =
+            stillAsking && result.pending
+                ? result.pending
+                : null;
 
         const previousExtras =
             (lastConfig && lastConfig.extras) || {};
+
+        // An answer like "6pm" carries no working hours of its own, so
+        // the Active Hours shown before stay on the card.
+        const isFullDayWindow = w =>
+            !w ||
+            ((w.start || "00:00") === "00:00" &&
+             (w.end || "23:59") === "23:59");
+
+        if (
+            wasPending &&
+            lastConfig &&
+            isFullDayWindow(result.active_window) &&
+            !isFullDayWindow(lastConfig.active_window)
+        ) {
+            result.active_window = lastConfig.active_window;
+        }
 
         lastConfig =
             result;
@@ -1819,8 +2209,18 @@ async function sendText() {
             renderCurrentSchedule();
             renderSummary(result.summary, result.notes);
             renderInvalid(result.invalid);
+
+            if (stillAsking) {
+                addMessage(
+                    escapeHtml(result.reply).replaceAll("\n", "<br>"),
+                    "bot"
+                );
+            }
+
             renderLogs(result.logs);
-            downloadJSON();
+
+            // the file is saved once the request is complete
+            if (!stillAsking) downloadJSON();
         } catch (renderError) {
             console.error(renderError);
 
